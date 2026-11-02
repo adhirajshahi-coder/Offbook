@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Offbook
 
-## Getting Started
+Real-world skills for classes 6 to 12. See `CLAUDE.md` for the stack, layout, rules and phase plan.
 
-First, run the development server:
+## First-time setup
+
+1. **Supabase.** Create a project at supabase.com in the Mumbai (ap-south-1) region. Copy `.env.example` to `.env.local` and fill in the URL, the publishable key, the secret key, the project ref and the DB password. Set `STUDENT_SESSION_SECRET` to 32+ random characters.
+2. **Email codes.** In Supabase, go to Authentication → Emails → "Magic Link" and add `{{ .Token }}` to the template, so the email carries a 6-digit code as well as the link. Add `http://localhost:3000/auth/callback` to Authentication → URL Configuration → Redirect URLs.
+3. **Database.** Run:
+   ```bash
+   npx supabase link --project-ref <your-ref>
+   npm run db:push
+   npm run seed
+   ```
+4. **Run it.** `npm run dev`, then open http://localhost:3000. With `ENABLE_DEV_LOGIN=true`, the login page offers "Sign in as demo parent / HQ admin". The demo children's PIN is `1234`.
+
+## Checks
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run typecheck
+npm run lint
+npm test
+npm run test:db   # RLS tests against your Supabase project
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Brand assets
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Save the official logo PNG as `public/brand/offbook-logo.png`. The SVG marks in `components/brand/Logo.tsx` and `public/brand/*.svg` are traced from it.

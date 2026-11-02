@@ -1,26 +1,144 @@
 @import "tailwindcss";
 
+/* Brand tokens (PRD §4.2). Sampled against public/brand/offbook-logo.png. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --violet-600: #7b14ff;
+  --violet-700: #5b0fd0;
+  --violet-100: #e9deff;
+  --violet-50: #f5f0ff;
+  --ink: #121214;
+  --night: #140b2b;
+  --night-2: #1f1247;
+  --white: #ffffff;
+
+  /* Reward and feedback colours: kid UI only, used sparingly */
+  --sun: #ffd23f;
+  --mint: #1fd6a0;
+  --coral: #ff5c7a;
+  --sky: #38bdf8;
+
+  /* Neutral surface tokens (marketing, parent, HQ) */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f5f9;
+  --border: #e4e2ea;
+  --text: var(--ink);
+  --text-muted: #5a5866;
+  --accent: var(--violet-600);
+  --accent-pressed: var(--violet-700);
+  --on-accent: var(--white);
+  --radius: 12px;
+}
+
+/*
+ * Age-band themes (PRD §4.4). Same tokens, three moods.
+ * Explore: brightest and roundest. Build: balanced. Launch: darker and sharper.
+ */
+[data-band="explore"] {
+  --bg: var(--violet-50);
+  --surface: #ffffff;
+  --surface-2: var(--violet-100);
+  --border: #d9c9ff;
+  --text: var(--ink);
+  --text-muted: #4b4560;
+  --radius: 22px;
+  --button-height: 56px;
+  --mascot-scale: 1.25;
+}
+
+[data-band="build"] {
+  --bg: #f3f1f8;
+  --surface: #ffffff;
+  --surface-2: #ebe7f5;
+  --border: #d8d2e6;
+  --text: var(--ink);
+  --text-muted: #4f4b5c;
+  --radius: 14px;
+  --button-height: 48px;
+  --mascot-scale: 0.85;
+}
+
+[data-band="launch"] {
+  --bg: var(--night);
+  --surface: var(--night-2);
+  --surface-2: #2a1a5e;
+  --border: #3a2a75;
+  --text: #f4f1ff;
+  --text-muted: #b9b0d9;
+  --accent: #8a2eff; /* white text on it is 5.4:1 */
+  --accent-pressed: var(--violet-600);
+  --radius: 8px;
+  --button-height: 44px;
+  --mascot-scale: 0.7;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-violet-600: var(--violet-600);
+  --color-violet-700: var(--violet-700);
+  --color-violet-100: var(--violet-100);
+  --color-violet-50: var(--violet-50);
+  --color-ink: var(--ink);
+  --color-night: var(--night);
+  --color-night-2: var(--night-2);
+  --color-sun: var(--sun);
+  --color-mint: var(--mint);
+  --color-coral: var(--coral);
+  --color-sky: var(--sky);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-pressed: var(--accent-pressed);
+  --color-on-accent: var(--on-accent);
+
+  --radius-band: var(--radius);
+
+  --font-display: var(--font-outfit), system-ui, sans-serif;
+  --font-sans: var(--font-lexend), system-ui, sans-serif;
+
+  /* Type scale (px): 12, 14, 16, 18, 22, 28, 36, 48, 64 */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-4xl: 48px;
+  --text-5xl: 64px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-lexend), system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-outfit), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
