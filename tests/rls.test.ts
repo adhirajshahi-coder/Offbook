@@ -105,6 +105,54 @@ describe.skipIf(!enabled)("RLS", () => {
     expect(other.error).not.toBeNull();
   });
 
+  describe("billing", () => {
+    let subId: string;
+
+    beforeAll(async () => {
+      const { data: plan } = await admin.from("plans").select("id").eq("slug", "annual").single();
+      const { data } = await admin
+        .from("subscriptions")
+        .insert({
+          student_id: childOfA,
+          parent_id: parentAId,
+          plan_id: plan!.id,
+          amount_paise: 600000,
+          list_price_paise: 600000,
+          razorpay_order_id: `rls_${Date.now()}`,
+        })
+        .select("id")
+        .single();
+      subId = data!.id;
+    });
+
+    it("shows a parent their own subscription but not another parent's", async () => {
+      expect((await parentA.from("subscriptions").select("id").eq("id", subId)).data).toHaveLength(1);
+      expect((await parentB.from("subscriptions").select("id").eq("id", subId)).data).toHaveLength(0);
+    });
+
+    it("won't let a parent activate a plan without paying", async () => {
+      const { error } = await parentA.from("subscriptions").update({ status: "active" }).eq("id", subId);
+      expect(error).not.toBeNull();
+    });
+
+    it("blocks parents from inserting subscriptions or invoices", async () => {
+      const sub = await parentA.from("subscriptions").insert({
+        student_id: childOfA, parent_id: parentAId, plan_id: subId, amount_paise: 0, list_price_paise: 0,
+      });
+      expect(sub.error).not.toBeNull();
+      const inv = await parentA.rpc("activate_subscription", { p_order_id: "x", p_payment_id: "y" });
+      expect(inv.error).not.toBeNull();
+    });
+
+    it("lets visitors read the plan but never coupons or leads", async () => {
+      const anon = createClient(url!, anonKey!, { auth: { persistSession: false } });
+      expect((await anon.from("plans").select("slug").eq("slug", "annual")).data).toHaveLength(1);
+      expect((await anon.from("coupons").select("code")).data ?? []).toHaveLength(0);
+      expect((await parentA.from("coupons").select("code")).data ?? []).toHaveLength(0);
+      expect((await parentA.from("lead_submissions").select("id")).data ?? []).toHaveLength(0);
+    });
+  });
+
   it("keeps the staff table and HQ content closed to parents", async () => {
     const staff = await parentA.from("staff").select("*");
     expect(staff.data ?? []).toHaveLength(0);

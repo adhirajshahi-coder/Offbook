@@ -29,6 +29,8 @@ components/brand   Logo (Wordmark, CubeMark, LevelUpArrow)
 components/kid     Kube and kid-UI components
 components/ui      shared primitives
 lib/               auth.ts, bands.ts, env.ts, student-session.ts, supabase/{server,client}.ts
+                   pricing.ts (pure, tested), billing.ts, razorpay.ts, email.ts, public-data.ts, parent-data.ts
+components/marketing  page blocks, TryItChallenge, PilotForm
 lib/gamification/  xp, levels, unlocks, leitner: pure and unit-tested (Phase 2)
 supabase/migrations  SQL; RLS on every table
 supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games)

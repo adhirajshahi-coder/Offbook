@@ -40,3 +40,11 @@ All ten owner decisions in `docs/curriculum/curriculum-mapping.md` were approved
 | D-015 | 2026-11-02 | `proxy.ts` skips every `/_next/` path | Running the session refresh on the dev HMR socket caused an endless reload loop |
 | D-016 | 2026-11-02 | `npm run db:push` connects with the DB password from `.env.local` (`scripts/db-push.mjs`) | `supabase link` needs a personal access token; the password is enough |
 | D-017 | 2026-11-02 | Each phase merges into `main` and is pushed to github.com/adhirajshahi-coder/Offbook once verified end to end | Owner asked for pushes as the build proceeds |
+| D-018 | 2026-11-02 | A school discount and a coupon don't stack: the family gets whichever saves more (`lib/pricing.ts`) | Simple to explain; can't produce surprise prices |
+| D-019 | 2026-11-02 | Razorpay `checkout.js` loads only on the checkout page, only when the parent presses Pay | It's the payment processor, not a tracker; keeps /parent otherwise free of third-party scripts |
+| D-020 | 2026-11-02 | Phone OTP still deferred | Needs an SMS provider and DLT template registration in India; email OTP covers sign-in until the owner picks one |
+| D-021 | 2026-11-02 | "Cancel" means turning off renewal reminders; plans end on their own. Refunds are self-serve requests inside the window (default 7 days, `policies.refunds.meta.window_days`), handled by ops in HQ (Phase 3) | One-time annual payment, no mandate (PRD §19 #3, #9) |
+| D-022 | 2026-11-02 | Invoice legal name and GSTIN come from `INVOICE_LEGAL_NAME` / `INVOICE_GSTIN`; GST 18% inclusive by default in `plans` | PRD §11 [VERIFY] with a CA before launch |
+| D-023 | 2026-11-02 | Marketing forms write to `lead_submissions` (deduped per email per day, UTM kept) until the Phase 5 CRM imports them | Lead capture works from day one without building the CRM early |
+| D-024 | 2026-11-02 | No product analytics and no cookie banner yet | No analytics tool is installed; add both together if one is (PRD §5) |
+| D-025 | 2026-11-02 | Renewal opens 30 days before a year ends; a renewal starts when the current year ends, so no days are lost | Prevents accidental double payment |

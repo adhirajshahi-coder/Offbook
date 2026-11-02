@@ -27,6 +27,11 @@ export async function enterProfile(prev: PinState, formData: FormData): Promise<
   if (error) return { error: "Something went wrong. Try again." };
   if (data !== "ok") return { error: MESSAGES[data as string] ?? MESSAGES.wrong };
 
+  const { data: active } = await supabase.rpc("has_active_subscription", { p_student_id: studentId });
+  if (!active) {
+    return { error: "Your Offbook year hasn't started yet. Ask a parent to start it in the Parent Zone." };
+  }
+
   await setStudentSession(parent.id, studentId);
   redirect("/play");
 }

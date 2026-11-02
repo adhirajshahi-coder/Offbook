@@ -66,6 +66,88 @@ export async function addChild(prev: AddChildState, formData: FormData): Promise
     .update({ consent_version: CONSENT_VERSION, consent_at: now })
     .eq("id", parent.id);
 
-  revalidatePath("/parent");
+  revalidatePath("/parent", "layout");
   return { ok: true };
+}
+
+export type ManageState = { error?: string; message?: string };
+
+async function ownChild(studentId: string) {
+  const parent = await requireParent();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("students")
+    .select("id, display_name, status")
+    .eq("id", studentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  return { parent, supabase, child: data };
+}
+
+export async function resetPin(prev: ManageState, formData: FormData): Promise<ManageState> {
+  const studentId = String(formData.get("studentId") ?? "");
+  const pin = String(formData.get("pin") ?? "");
+  if (!/^\d{4}$/.test(pin)) return { error: "The PIN is 4 digits." };
+  const { supabase, child } = await ownChild(studentId);
+  if (!child) return { error: "We couldn't find that profile." };
+  const { error } = await supabase.rpc("set_student_pin", { p_student_id: studentId, p_pin: pin });
+  return error ? { error: "That didn't save. Try again." } : { message: `New PIN saved for ${child.display_name}.` };
+}
+
+export async function changeClass(prev: ManageState, formData: FormData): Promise<ManageState> {
+  const studentId = String(formData.get("studentId") ?? "");
+  const classGrade = Number(formData.get("classGrade"));
+  if (!Number.isInteger(classGrade) || classGrade < 6 || classGrade > 12) return { error: "Pick a class from 6 to 12." };
+  const { supabase, child } = await ownChild(studentId);
+  if (!child) return { error: "We couldn't find that profile." };
+  // The look follows the class automatically. Course level only moves with
+  // progress (lib/bands.ts canMoveUp), so it isn't touched here.
+  const { error } = await supabase.from("students").update({ class_grade: classGrade }).eq("id", studentId);
+  if (error) return { error: "That didn't save. Try again." };
+  revalidatePath("/parent", "layout");
+  return { message: `${child.display_name} is now in class ${classGrade}.` };
+}
+
+export async function setConsent(formData: FormData) {
+  const studentId = String(formData.get("studentId") ?? "");
+  const action = formData.get("action") === "withdraw" ? "withdrawn" : "given";
+  const { parent, supabase, child } = await ownChild(studentId);
+  if (!child) return;
+  await supabase.from("consent_log").insert({
+    parent_id: parent.id,
+    student_id: studentId,
+    action,
+    version: CONSENT_VERSION,
+    method: "parent_zone_consent_page",
+  });
+  // Without consent we stop processing: the profile is paused and can't be opened.
+  await supabase
+    .from("students")
+    .update({ status: action === "withdrawn" ? "paused" : "active" })
+    .eq("id", studentId);
+  revalidatePath("/parent", "layout");
+}
+
+export async function removeChild(prev: ManageState, formData: FormData): Promise<ManageState> {
+  const studentId = String(formData.get("studentId") ?? "");
+  const confirmName = String(formData.get("confirm") ?? "").trim();
+  const { parent, supabase, child } = await ownChild(studentId);
+  if (!child) return { error: "We couldn't find that profile." };
+  if (confirmName.toLowerCase() !== child.display_name.toLowerCase()) {
+    return { error: `Type ${child.display_name} to confirm.` };
+  }
+  const { error } = await supabase
+    .from("students")
+    .update({ deleted_at: new Date().toISOString(), status: "archived" })
+    .eq("id", studentId);
+  if (error) return { error: "That didn't work. Try again." };
+  await supabase.from("consent_log").insert({
+    parent_id: parent.id,
+    student_id: studentId,
+    action: "withdrawn",
+    version: CONSENT_VERSION,
+    method: "profile_deleted",
+  });
+  revalidatePath("/parent", "layout");
+  return { message: `${child.display_name}'s profile has been deleted.` };
 }

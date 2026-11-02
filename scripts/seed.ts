@@ -9,6 +9,8 @@
 import { config } from "dotenv";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { BRIDGE, COURSES, GAMES, SLOTS, TRACKS } from "../supabase/seed-data/curriculum";
+import { POLICIES } from "../supabase/seed-data/policies";
+import { CONSENT_VERSION } from "../lib/consent";
 
 config({ path: ".env.local" });
 
@@ -81,14 +83,23 @@ async function seedCurriculum() {
   );
   const trackId = new Map(tracks.map((t) => [t.slug, t.id]));
 
-  // Slots have no natural key, so replace them wholesale.
-  check("clear slots", await db.from("course_slots").delete().not("id", "is", null));
-  const slots = check(
+  // Slots are keyed by (level, position). Update in place: deleting them would
+  // orphan the slot courses (they must sit on the path or in a slot).
+  const existingSlots = check<{ id: string; level: number; order_index: number }[]>(
+    "read slots",
+    await db.from("course_slots").select("id, level, order_index"),
+  );
+  for (const s of SLOTS) {
+    const hit = existingSlots.find((r) => r.level === s.level && r.order_index === s.order);
+    if (hit) {
+      check("update slot", await db.from("course_slots").update({ title: s.title }).eq("id", hit.id));
+    } else {
+      check("insert slot", await db.from("course_slots").insert({ level: s.level, order_index: s.order, title: s.title }));
+    }
+  }
+  const slots = check<{ id: string; level: number; order_index: number }[]>(
     "slots",
-    await db
-      .from("course_slots")
-      .insert(SLOTS.map((s) => ({ level: s.level, order_index: s.order, title: s.title })))
-      .select("id, level, order_index"),
+    await db.from("course_slots").select("id, level, order_index"),
   );
   const slotId = new Map(
     SLOTS.map((s) => [s.key, slots.find((r) => r.level === s.level && r.order_index === s.order)!.id]),
@@ -193,7 +204,95 @@ async function seedDemoAccounts() {
     );
     await setPin(db, student.id, DEMO_PIN);
   }
+
+  // Record consent for each demo child, as the Parent Zone does for real ones.
+  const { data: kids } = await db.from("students").select("id").eq("parent_id", parentId);
+  const { data: consented } = await db.from("consent_log").select("student_id").eq("parent_id", parentId);
+  const done = new Set((consented ?? []).map((c) => c.student_id));
+  const missing = (kids ?? []).filter((k) => !done.has(k.id));
+  if (missing.length) {
+    check(
+      "demo consent",
+      await db.from("consent_log").insert(
+        missing.map((k) => ({ parent_id: parentId, student_id: k.id, action: "given", version: CONSENT_VERSION, method: "seed" })),
+      ),
+    );
+  }
   console.log(`✓ demo admin ${DEMO_ADMIN.email}, demo parent ${DEMO_PARENT.email} (child PIN ${DEMO_PIN})`);
+  return parentId;
+}
+
+async function seedBilling(demoParentId: string) {
+  const plan = check<{ id: string }>(
+    "plan",
+    await db
+      .from("plans")
+      .upsert(
+        {
+          slug: "annual",
+          name: "Offbook year",
+          description: "Everything Offbook has, for one child, for 12 months.",
+          price_paise: 600000,
+          tax_rate: 18,
+          tax_inclusive: true,
+          duration_days: 365,
+          features: [
+            "Every course in your child's level, unlocked one at a time",
+            "Games, weekly challenges and leagues",
+            "Projects and a portfolio you control",
+            "Monthly online mentor sessions",
+            "Weekly progress summary for parents",
+          ],
+          active: true,
+        },
+        { onConflict: "slug" },
+      )
+      .select("id")
+      .single(),
+  );
+
+  check(
+    "coupons",
+    await db
+      .from("coupons")
+      .upsert({ code: "WELCOME10", kind: "percent", value: 10, note: "Demo coupon" }, { onConflict: "code" }),
+  );
+  check(
+    "demo school",
+    await db.from("schools").upsert(
+      { name: "Demo Public School", city: "New Delhi", state: "Delhi", board: "CBSE", school_code: "DEMO2026", discount_percent: 20 },
+      { onConflict: "school_code" },
+    ),
+  );
+
+  // Policies: insert only, so HQ edits are never overwritten by a re-seed.
+  check("policies", await db.from("policies").upsert(POLICIES, { onConflict: "slug", ignoreDuplicates: true }));
+
+  // Give the demo children an active year so Play works straight away.
+  const { data: kids } = await db
+    .from("students")
+    .select("id, display_name")
+    .eq("parent_id", demoParentId)
+    .in("display_name", DEMO_CHILDREN.map((c) => c.name));
+  for (const kid of kids ?? []) {
+    const { data: active } = await db.rpc("has_active_subscription", { p_student_id: kid.id });
+    if (active) continue;
+    const orderId = `demo_${kid.id}`;
+    await db.from("subscriptions").delete().eq("razorpay_order_id", orderId).eq("status", "pending");
+    check(
+      `subscription ${kid.display_name}`,
+      await db.from("subscriptions").insert({
+        student_id: kid.id,
+        parent_id: demoParentId,
+        plan_id: plan.id,
+        amount_paise: 600000,
+        list_price_paise: 600000,
+        razorpay_order_id: orderId,
+      }),
+    );
+    check("activate", await db.rpc("activate_subscription", { p_order_id: orderId, p_payment_id: `demo_pay_${kid.id}` }));
+  }
+  console.log("✓ annual plan ₹6,000, coupon WELCOME10, school code DEMO2026 (20%), 4 policy pages, demo plans active");
 }
 
 // set_student_pin checks auth.uid(), which the service role lacks, so hash in SQL directly.
@@ -218,7 +317,8 @@ async function reset() {
 async function main() {
   if (process.argv.includes("--reset")) await reset();
   await seedCurriculum();
-  await seedDemoAccounts();
+  const demoParentId = await seedDemoAccounts();
+  await seedBilling(demoParentId);
 }
 
 main().catch((err) => {

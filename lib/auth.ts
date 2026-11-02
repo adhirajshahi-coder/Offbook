@@ -81,7 +81,11 @@ export async function getActiveStudent() {
     .from("students")
     .select("id, display_name, class_grade, band, content_level, avatar, xp, level, rank, weekly_goal")
     .eq("id", studentId)
+    .eq("status", "active")
     .is("deleted_at", null)
     .maybeSingle();
-  return data;
+  if (!data) return null;
+  // A refund, expiry or withdrawn consent ends play even mid-session.
+  const { data: active } = await supabase.rpc("has_active_subscription", { p_student_id: data.id });
+  return active ? data : null;
 }
