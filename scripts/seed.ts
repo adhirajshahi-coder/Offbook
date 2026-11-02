@@ -11,6 +11,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { BRIDGE, COURSES, GAMES, SLOTS, TRACKS } from "../supabase/seed-data/curriculum";
 import { POLICIES } from "../supabase/seed-data/policies";
 import { CONSENT_VERSION } from "../lib/consent";
+import { seedContent } from "./seed-content";
 
 config({ path: ".env.local" });
 
@@ -317,6 +318,7 @@ async function reset() {
 async function main() {
   if (process.argv.includes("--reset")) await reset();
   await seedCurriculum();
+  await seedContent(db);
   const demoParentId = await seedDemoAccounts();
   await seedBilling(demoParentId);
 }

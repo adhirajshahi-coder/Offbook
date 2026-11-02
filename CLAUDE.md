@@ -31,6 +31,9 @@ components/ui      shared primitives
 lib/               auth.ts, bands.ts, env.ts, student-session.ts, supabase/{server,client}.ts
                    pricing.ts (pure, tested), billing.ts, razorpay.ts, email.ts, public-data.ts, parent-data.ts
 components/marketing  page blocks, TryItChallenge, PilotForm
+lib/play/          session (requireStudent), state (world, course, unlock), progress (XP, vault, mastery, badges), skills, stats
+app/play/learn/actions.ts  every Play write: verify child session → re-check unlocks → write with service role
+supabase/seed-data/content  written lessons (lesson-types.ts format), validated by content.test.ts
 lib/gamification/  xp, levels, unlocks, leitner: pure and unit-tested (Phase 2)
 supabase/migrations  SQL; RLS on every table
 supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games)

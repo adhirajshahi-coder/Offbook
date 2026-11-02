@@ -153,6 +153,30 @@ describe.skipIf(!enabled)("RLS", () => {
     });
   });
 
+  describe("progress", () => {
+    beforeAll(async () => {
+      await admin.from("xp_events").insert({ student_id: childOfA, source_type: "test", source_id: "rls", amount: 10 });
+    });
+
+    it("lets a parent read their child's XP but not another child's", async () => {
+      expect((await parentA.from("xp_events").select("amount").eq("student_id", childOfA)).data).toHaveLength(1);
+      expect((await parentB.from("xp_events").select("amount").eq("student_id", childOfA)).data ?? []).toHaveLength(0);
+    });
+
+    it("never lets a parent write progress or XP directly", async () => {
+      const xp = await parentA.from("xp_events").insert({ student_id: childOfA, source_type: "cheat", source_id: "x", amount: 9999 });
+      expect(xp.error).not.toBeNull();
+      const { data: course } = await admin.from("courses").select("id").eq("slug", "money-skills").single();
+      const cp = await parentA.from("course_progress").insert({ student_id: childOfA, course_id: course!.id, status: "completed" });
+      expect(cp.error).not.toBeNull();
+    });
+
+    it("keeps lesson content and answers away from families", async () => {
+      expect((await parentA.from("questions").select("answer")).data ?? []).toHaveLength(0);
+      expect((await parentA.from("lesson_steps").select("id")).data ?? []).toHaveLength(0);
+    });
+  });
+
   it("keeps the staff table and HQ content closed to parents", async () => {
     const staff = await parentA.from("staff").select("*");
     expect(staff.data ?? []).toHaveLength(0);
