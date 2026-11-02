@@ -37,3 +37,6 @@ All ten owner decisions in `docs/curriculum/curriculum-mapping.md` were approved
 | D-012 | 2026-11-02 | Phase 0 asks for parental consent (checkbox, version, timestamp, method → `consent_log`) when a child is added | DPDP: consent before processing a child's data; Phase 1 adds the full consent flow and withdrawal |
 | D-013 | 2026-11-02 | Logo SVGs traced by hand from the owner's PNG; the PNG itself still needs saving to `public/brand/offbook-logo.png` | The PNG was shared in chat, not as a file |
 | D-014 | 2026-11-02 | Launch-band accent is `#8A2EFF` instead of violet-600 on dark surfaces | White text on it is 5.4:1 (AA); keeps contrast on the night background |
+| D-015 | 2026-11-02 | `proxy.ts` skips every `/_next/` path | Running the session refresh on the dev HMR socket caused an endless reload loop |
+| D-016 | 2026-11-02 | `npm run db:push` connects with the DB password from `.env.local` (`scripts/db-push.mjs`) | `supabase link` needs a personal access token; the password is enough |
+| D-017 | 2026-11-02 | Each phase merges into `main` and is pushed to github.com/adhirajshahi-coder/Offbook once verified end to end | Owner asked for pushes as the build proceeds |

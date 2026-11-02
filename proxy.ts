@@ -52,6 +52,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|icon.svg|brand/|api/health|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Skip every /_next/ path: static files, images and the dev HMR socket
+    // (running the session refresh on the socket breaks live reload).
+    "/((?!_next/|icon.svg|brand/|api/health|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

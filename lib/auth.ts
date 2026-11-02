@@ -52,7 +52,11 @@ export const getParent = cache(async () => {
 
 export async function requireParent(next = "/parent") {
   const parent = await getParent();
-  if (!parent) redirect(`/login?next=${encodeURIComponent(next)}`);
+  if (!parent) {
+    // Staff accounts have no parent row; send them to HQ rather than a login loop.
+    if (await getStaff()) redirect("/hq");
+    redirect(`/login?next=${encodeURIComponent(next)}`);
+  }
   return parent;
 }
 
