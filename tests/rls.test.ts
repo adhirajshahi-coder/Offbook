@@ -218,6 +218,55 @@ describe.skipIf(!enabled)("RLS", () => {
     });
   });
 
+  describe("games, challenges and portfolio", () => {
+    let challengeId: string;
+    let itemId: string;
+
+    beforeAll(async () => {
+      const { data: ch } = await admin.from("challenges").select("id").eq("status", "published").limit(1).single();
+      challengeId = ch!.id;
+      await admin.from("challenge_permissions").insert({ student_id: childOfA, challenge_id: challengeId });
+      const { data: item } = await admin
+        .from("portfolio_items")
+        .insert({ student_id: childOfA, source_type: "challenge", source_id: challengeId, title: "RLS item" })
+        .select("id")
+        .single();
+      itemId = item!.id;
+    });
+
+    it("lets only the child's own parent grant a challenge", async () => {
+      const other = await parentB.from("challenge_permissions").update({ granted_at: new Date().toISOString() }).eq("student_id", childOfA).select("student_id");
+      expect(other.data ?? []).toHaveLength(0);
+      const own = await parentA.from("challenge_permissions").update({ granted_at: new Date().toISOString(), granted_by: parentAId }).eq("student_id", childOfA).select("student_id");
+      expect(own.data).toHaveLength(1);
+    });
+
+    it("never lets families write game sessions, submissions or certificates", async () => {
+      const { data: game } = await admin.from("games").select("id").limit(1).single();
+      expect((await parentA.from("game_sessions").insert({ student_id: childOfA, game_id: game!.id, seed: 1 })).error).not.toBeNull();
+      expect((await parentA.from("submissions").insert({ student_id: childOfA, kind: "challenge", content: {} })).error).not.toBeNull();
+      expect((await parentA.from("certificates").insert({ code: "OB-RLSX-TEST", student_id: childOfA, title: "x", course_id: null, mission_id: null })).error).not.toBeNull();
+    });
+
+    it("lets a parent share an item but not approve it for the Showcase", async () => {
+      const share = await parentA.from("portfolio_items").update({ visibility: "portfolio", showcase_consent: true }).eq("id", itemId).select("showcase_status").single();
+      expect(share.data?.showcase_status).toBe("pending");
+      const approve = await parentA.from("portfolio_items").update({ showcase_status: "approved" }).eq("id", itemId);
+      expect(approve.error).not.toBeNull();
+      const retitle = await parentA.from("portfolio_items").update({ title: "Changed" }).eq("id", itemId);
+      expect(retitle.error).not.toBeNull();
+      expect((await parentB.from("portfolio_items").select("id").eq("id", itemId)).data ?? []).toHaveLength(0);
+    });
+
+    it("lets a reviewer approve a consented Showcase item, and keeps leagues closed to families", async () => {
+      const u = await signedInParent("staff-reviewer", "staff");
+      await admin.from("staff").insert({ id: u.id, name: "RLS reviewer", role: "reviewer", active: true });
+      const ok = await u.client.from("portfolio_items").update({ showcase_status: "approved" }).eq("id", itemId).select("id");
+      expect(ok.data).toHaveLength(1);
+      expect((await parentA.from("leagues").select("id")).data ?? []).toHaveLength(0);
+    });
+  });
+
   it("keeps the staff table and HQ content closed to parents", async () => {
     const staff = await parentA.from("staff").select("*");
     expect(staff.data ?? []).toHaveLength(0);

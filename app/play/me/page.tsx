@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Kube } from "@/components/kid/Kube";
 import type { KubeStage } from "@/components/kid/kube-types";
 import { MuteToggle } from "@/components/kid/MuteToggle";
@@ -8,6 +9,7 @@ import { RANKS, RANK_LABEL, RANK_THRESHOLDS, rankIndex, type Rank } from "@/lib/
 import { istDay, istWeekStart } from "@/lib/gamification/streaks";
 import { requireStudent } from "@/lib/play/session";
 import { loadStats } from "@/lib/play/stats";
+import { loadPortfolio, SOURCE_LABEL } from "@/lib/portfolio";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Me" };
@@ -17,7 +19,7 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default async function MePage() {
   const student = await requireStudent();
-  const stats = await loadStats(student.id, student.weekly_goal);
+  const [stats, portfolio] = await Promise.all([loadStats(student.id, student.weekly_goal), loadPortfolio(student.id)]);
   const rank = (student.rank as Rank) ?? "rookie";
   const ri = rankIndex(rank);
   const nextRank = RANKS[ri + 1];
@@ -38,7 +40,12 @@ export default async function MePage() {
               ? `Finish ${RANK_THRESHOLDS[nextRank]} ${RANK_THRESHOLDS[nextRank] === 1 ? "course" : "courses"} to become ${RANK_LABEL[nextRank]}. Kube evolves too.`
               : "Top rank. Legendary."}
           </p>
-          <MuteToggle />
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/play/league" className="rounded-full bg-surface-2 px-4 py-2 text-sm font-semibold">
+              🏆 Weekly league
+            </Link>
+            <MuteToggle />
+          </div>
         </section>
 
         <section className="rounded-band border border-line bg-surface p-5">
@@ -104,11 +111,45 @@ export default async function MePage() {
           )}
         </section>
 
-        <section className="rounded-band border border-dashed border-line p-5">
+        <section className="rounded-band border border-line bg-surface p-5">
           <h2 className="text-xl font-black">Portfolio</h2>
-          <p className="mt-1 text-sm text-muted">
-            Your finished missions and projects will show up here as cards you can be proud of.
-          </p>
+          {portfolio.items.length === 0 && portfolio.certificates.length === 0 ? (
+            <p className="mt-1 text-sm text-muted">Finish a capstone or a challenge and it becomes a card here you can be proud of.</p>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted">Only you and your parent see these, unless your parent chooses to share them.</p>
+              {portfolio.certificates.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {portfolio.certificates.map((c) => (
+                    <li key={c.code}>
+                      <Link href={`/certificates/${c.code}`} className="inline-flex items-center gap-1 rounded-full bg-sun px-3 py-1 text-sm font-bold text-ink">
+                        🏅 {c.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {portfolio.items.map((item) => (
+                  <li key={item.id} className="rounded-band border-2 border-line bg-bg p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted">{SOURCE_LABEL[item.source_type]}</p>
+                    <h3 className="font-black">{item.title}</h3>
+                    {item.summary && <p className="mt-1 text-sm text-muted">{item.summary}</p>}
+                    {item.skills.length > 0 && (
+                      <ul className="mt-2 flex flex-wrap gap-1">
+                        {item.skills.map((sk) => (
+                          <li key={sk} className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold">
+                            {sk}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {item.showcase_status === "approved" && <p className="mt-2 text-xs font-semibold">★ On the Offbook Showcase</p>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       </main>
     </WithTabs>

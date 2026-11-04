@@ -39,7 +39,13 @@ app/hq/ops         students (overrides, PIN, placement), subscriptions and refun
 app/hq/settings    team roles, audit log
 components/hq      HQ primitives: ui.tsx, forms.tsx, DataTable.tsx, CommandPalette.tsx
 lib/mux.ts         direct uploads, webhook signature, signed playback tokens
-lib/gamification/  xp, levels, unlocks, leitner: pure and unit-tested (Phase 2)
+lib/gamification/  xp, levels, unlocks, leitner, leagues: pure and unit-tested
+lib/games/         seeded game engines (rng, budget-bazaar, decision-dojo, xp caps): pure; the server replays inputs to score
+app/play/games     GameShell + game screens; actions start a seeded session and replay the run (50 XP/session, 150/day)
+app/play/challenges  ask a parent -> parent grants in /parent/activity -> submit text or link -> review queue
+app/hq/review      review queue (SLA, assign, rubric, canned feedback) + Showcase moderation; effects in lib/hq/review.ts
+lib/portfolio.ts   portfolio, certificates (/certificates/[code]), public /p/[handle], /showcase: service role, filtered
+lib/play/league.ts weekly leagues: lazy join, live standings, rollover (/api/cron/league-rollover, Bearer CRON_SECRET)
 supabase/migrations  SQL; RLS on every table
 supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games)
 scripts/seed.ts    npm run seed / seed:reset

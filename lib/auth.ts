@@ -79,7 +79,7 @@ export const getActiveStudent = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("students")
-    .select("id, display_name, class_grade, band, content_level, started_level, avatar, xp, level, rank, weekly_goal")
+    .select("id, display_name, class_grade, band, content_level, started_level, avatar, xp, level, rank, weekly_goal, league_opt_in")
     .eq("id", studentId)
     .eq("status", "active")
     .is("deleted_at", null)

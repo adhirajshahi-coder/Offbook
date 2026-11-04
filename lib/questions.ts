@@ -194,3 +194,16 @@ export function isMeaningfulText(text: string, minLength: number): boolean {
   const words = t.toLowerCase().split(/\s+/).filter(Boolean);
   return new Set(words).size >= Math.min(3, words.length);
 }
+
+/** A child's optional work link: http(s) only. Returns null for blank, throws a friendly message if malformed. */
+export function parseWorkLink(raw: string | undefined): string | null {
+  const s = raw?.trim();
+  if (!s) return null;
+  try {
+    const u = new URL(s);
+    if (!["http:", "https:"].includes(u.protocol)) throw new Error();
+    return u.toString();
+  } catch {
+    throw new Error("That link doesn't look right. It should start with https://");
+  }
+}
