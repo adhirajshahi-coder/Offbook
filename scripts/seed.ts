@@ -12,6 +12,7 @@ import { BRIDGE, COURSES, GAMES, SLOTS, TRACKS } from "../supabase/seed-data/cur
 import { POLICIES } from "../supabase/seed-data/policies";
 import { CONSENT_VERSION } from "../lib/consent";
 import { seedContent } from "./seed-content";
+import { BUDGET_BAZAAR, CHALLENGES, DECISION_DOJO } from "../supabase/seed-data/games";
 
 config({ path: ".env.local" });
 
@@ -30,6 +31,7 @@ const DEMO_STAFF = [
   { email: "content@demo.offbook.test", name: "Ravi (demo content)", role: "content" },
   { email: "ops@demo.offbook.test", name: "Neha (demo ops)", role: "ops" },
   { email: "teacher@demo.offbook.test", name: "Mr Iyer (demo teacher)", role: "teacher" },
+  { email: "reviewer@demo.offbook.test", name: "Sana (demo reviewer)", role: "reviewer" },
 ];
 const DEMO_CHILDREN = [
   { name: "Aarav", classGrade: 7 },
@@ -162,13 +164,63 @@ async function seedCurriculum() {
         title: g.title,
         track_id: trackId.get(g.track)!,
         unlock_course_id: courseId.get(g.unlocksAt)!,
-        status: "draft", // published when each game ships (Phases 4 and 6)
+        // status stays as set: new rows start as draft; seedGames publishes playable ones.
       })),
       { onConflict: "slug" },
     ),
   );
 
   console.log(`✓ ${tracks.length} tracks, ${slots.length} slots, ${courses.length} courses, ${GAMES.length} games`);
+}
+
+const GAME_CONTENT = {
+  "budget-bazaar": {
+    config: BUDGET_BAZAAR,
+    description: "Run your pocket money week by week. Pay for needs, handle surprises, save toward a goal, and still have some fun.",
+  },
+  "decision-dojo": {
+    config: DECISION_DOJO,
+    description: "Step into a tricky situation. Each choice changes the story, and the debrief shows the thinking behind it.",
+  },
+};
+
+/** Phase 4: publish the playable games (config only written once) and demo challenges. */
+async function seedGames() {
+  for (const [slug, g] of Object.entries(GAME_CONTENT)) {
+    const { data } = await db.from("games").select("id, config").eq("slug", slug).single();
+    if (!data) throw new Error(`game ${slug} missing`);
+    const empty = !data.config || Object.keys(data.config).length === 0;
+    check(
+      `game ${slug}`,
+      await db
+        .from("games")
+        .update({ status: "published", description: g.description, ...(empty ? { config: g.config } : {}) })
+        .eq("id", data.id)
+        .select("id"),
+    );
+  }
+
+  const [{ data: tracks }, { data: courses }] = await Promise.all([db.from("tracks").select("id, slug"), db.from("courses").select("id, slug")]);
+  const trackId = new Map((tracks ?? []).map((t) => [t.slug, t.id]));
+  const courseId = new Map((courses ?? []).map((c) => [c.slug, c.id]));
+  for (const c of CHALLENGES) {
+    const row = {
+      title: c.title,
+      type: c.type,
+      brief: c.brief,
+      rubric: c.rubric,
+      safety_note: c.safety_note,
+      xp: c.xp,
+      track_id: trackId.get(c.track) ?? null,
+      required_course_id: courseId.get(c.requiredCourse) ?? null,
+      parent_ack_required: true,
+      status: "published",
+    };
+    const { data: existing } = await db.from("challenges").select("id").eq("title", c.title).maybeSingle();
+    if (existing) check(`challenge ${c.title}`, await db.from("challenges").update(row).eq("id", existing.id).select("id"));
+    else check(`challenge ${c.title}`, await db.from("challenges").insert(row).select("id"));
+  }
+  console.log(`✓ ${Object.keys(GAME_CONTENT).length} games published, ${CHALLENGES.length} challenges`);
 }
 
 async function seedDemoAccounts() {
@@ -321,7 +373,7 @@ async function reset() {
     const id = await findUserId(email);
     if (id) await db.auth.admin.deleteUser(id);
   }
-  for (const table of ["games", "courses", "course_slots", "tracks"]) {
+  for (const table of ["challenges", "games", "courses", "course_slots", "tracks"]) {
     check(`clear ${table}`, await db.from(table).delete().not("id", "is", null));
   }
   console.log("✓ reset demo accounts and content");
@@ -331,8 +383,11 @@ async function main() {
   if (process.argv.includes("--reset")) await reset();
   await seedCurriculum();
   await seedContent(db);
+  await seedGames();
   const demoParentId = await seedDemoAccounts();
   await seedBilling(demoParentId);
+  // Demo children join weekly leagues (real families opt in from the Parent Zone).
+  check("league opt-in", await db.from("students").update({ league_opt_in: true }).eq("parent_id", demoParentId).select("id"));
 }
 
 main().catch((err) => {

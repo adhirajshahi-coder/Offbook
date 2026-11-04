@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/parent", label: "Overview" },
   { href: "/parent/children", label: "Children" },
+  { href: "/parent/activity", label: "Activity and sharing" },
   { href: "/parent/billing", label: "Billing" },
   { href: "/parent/consent", label: "Privacy and consent" },
 ];

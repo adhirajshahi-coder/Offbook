@@ -6,7 +6,7 @@ import { studentOrThrow } from "@/lib/play/session";
 import { awardXp, checkBadges, recordAttempt, refreshTotals } from "@/lib/play/progress";
 import { courseIdForLesson, courseIdForMission, loadCourse, loadWorld } from "@/lib/play/state";
 import { istDay } from "@/lib/gamification/streaks";
-import { checkAnswer, isMeaningfulText, toClient, type ClientQuestion, type QuestionRow, type Response } from "@/lib/questions";
+import { checkAnswer, isMeaningfulText, parseWorkLink, toClient, type ClientQuestion, type QuestionRow, type Response } from "@/lib/questions";
 import { createAdminClient } from "@/lib/supabase/server";
 
 /**
@@ -404,15 +404,11 @@ export async function submitCapstone(input: { courseId: string; text: string; li
   if (!view || (view.inside.capstone !== "available")) return { ok: false, error: "The capstone opens after every mission is done." };
   const text = input.text.trim();
   if (!isMeaningfulText(text, 60)) return { ok: false, error: "Tell us a bit more about what you made: a few sentences at least." };
-  let link: string | null = null;
-  if (input.link?.trim()) {
-    try {
-      const u = new URL(input.link.trim());
-      if (!["http:", "https:"].includes(u.protocol)) throw new Error();
-      link = u.toString();
-    } catch {
-      return { ok: false, error: "That link doesn't look right. It should start with https://" };
-    }
+  let link: string | null;
+  try {
+    link = parseWorkLink(input.link);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
   }
   const db = createAdminClient();
   await db.from("submissions").insert({
