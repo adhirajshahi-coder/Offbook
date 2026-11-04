@@ -76,6 +76,38 @@ export function toRow(q: QuestionSeed): { type: QuestionType; prompt: string; op
   }
 }
 
+/** DB columns → seed/editor format (the inverse of toRow). */
+export function fromRow(r: Pick<QuestionRow, "type" | "prompt" | "options" | "answer" | "explanation" | "hint1" | "hint2" | "difficulty">): QuestionSeed {
+  const base = {
+    prompt: r.prompt,
+    explanation: r.explanation,
+    hint1: r.hint1 ?? "",
+    hint2: r.hint2 ?? "",
+    difficulty: (Math.min(3, Math.max(1, r.difficulty)) as 1 | 2 | 3),
+  };
+  const o = r.options as never;
+  const a = r.answer as Record<string, never>;
+  switch (r.type) {
+    case "multiple_choice":
+    case "scenario":
+      return { ...base, type: r.type, options: o as string[], answer: a.index as number };
+    case "multi_select":
+      return { ...base, type: r.type, options: o as string[], answer: a.indexes as number[] };
+    case "order":
+      return { ...base, type: r.type, items: o as string[] };
+    case "match_pairs":
+      return { ...base, type: r.type, pairs: a.pairs as [string, string][] };
+    case "slider": {
+      const s = o as { min: number; max: number; step: number; unit: "₹" | "%" | "" };
+      return { ...base, type: r.type, ...s, answer: a.value as number, tolerance: a.tolerance as number };
+    }
+    case "short_answer": {
+      const s = o as { checklist: string[]; minLength: number };
+      return { ...base, type: r.type, ...s };
+    }
+  }
+}
+
 function shuffle<T>(items: T[], random: () => number): T[] {
   const a = [...items];
   for (let i = a.length - 1; i > 0; i--) {

@@ -12,6 +12,9 @@ export const metadata: Metadata = { title: "Log in" };
 const DEV_USERS = [
   { email: "parent@demo.offbook.test", label: "Demo parent" },
   { email: "admin@demo.offbook.test", label: "HQ admin" },
+  { email: "content@demo.offbook.test", label: "HQ content editor" },
+  { email: "ops@demo.offbook.test", label: "HQ ops" },
+  { email: "teacher@demo.offbook.test", label: "HQ teacher" },
 ];
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {

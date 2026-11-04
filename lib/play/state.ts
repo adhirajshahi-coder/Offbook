@@ -67,7 +67,9 @@ export const loadWorld = cache(async (student: Student): Promise<World> => {
     courses: courseRows.map((c) => ({ id: c.id, level: c.level, kind: c.kind, orderIndex: c.order_index, slotId: c.slot_id })),
     slots: (slots.data ?? []).map((s) => ({ id: s.id, level: s.level, orderIndex: s.order_index })),
     progress: progressMap,
-    overrides: (overrides.data ?? []).map((o) => ({ courseId: o.course_id, action: o.action as "unlock" | "reset" })),
+    // Resets clear progress rows when staff apply them (hq/ops/actions.ts);
+    // only grants stay in force here.
+    overrides: (overrides.data ?? []).filter((o) => o.action === "unlock").map((o) => ({ courseId: o.course_id, action: "unlock" as const })),
   });
 
   return {

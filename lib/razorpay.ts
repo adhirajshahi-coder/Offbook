@@ -51,6 +51,19 @@ export async function createOrder(input: {
   return (await res.json()) as RazorpayOrder;
 }
 
+/** Full or partial refund of a captured payment (PRD §11). */
+export async function refundPayment(paymentId: string, amountPaise: number): Promise<{ id: string; status: string }> {
+  const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${keySecret()}`).toString("base64");
+  const res = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/refund`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: amountPaise, speed: "normal" }),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Razorpay refund failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  return (await res.json()) as { id: string; status: string };
+}
+
 function safeEqualHex(a: string, b: string): boolean {
   const x = Buffer.from(a);
   const y = Buffer.from(b);

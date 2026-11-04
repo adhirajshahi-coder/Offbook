@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   answerStepQuestion,
   completeStep,
@@ -10,8 +10,10 @@ import {
   type Celebration,
   type QuestionPayload,
 } from "@/app/play/learn/actions";
+import { previewAnswer, previewQuestion } from "@/app/hq/content/lessons/preview-actions";
 import { Kube } from "@/components/kid/Kube";
 import { HintLadder, QuestionView } from "@/components/kid/QuestionView";
+import { VideoPlayer } from "@/components/kid/VideoPlayer";
 import { Visual } from "@/components/kid/Visual";
 import { Button, buttonClass } from "@/components/ui/button";
 import { celebrate, feedbackCorrect, feedbackOops } from "@/lib/client/feedback";
@@ -23,7 +25,24 @@ export type PlayerStep =
   | { id: string; type: "practice"; label?: string; groups: string[] }
   | { id: string; type: "make"; prompt: string; rubric: string[] }
   | { id: string; type: "reflect"; prompt: string }
-  | { id: string; type: "video"; label?: string };
+  | {
+      id: string;
+      type: "video";
+      label?: string;
+      video: { playbackId: string; token: string; thumbnailToken: string; title: string; captionsUrl: string | null } | null;
+      startSec: number | null;
+      endSec: number | null;
+      minWatchPct: number;
+    };
+
+type PlayerApi = {
+  getQuestion: (stepId: string, group: string, exclude: string[]) => Promise<QuestionPayload>;
+  answer: (input: { stepId: string; questionId: string; response: Response; hintsUsed: number; ms: number }) => Promise<AnswerResult>;
+};
+// Live actions record progress; preview actions (staff) check answers without writing anything.
+const LIVE: PlayerApi = { getQuestion: getStepQuestion, answer: answerStepQuestion };
+const PREVIEW: PlayerApi = { getQuestion: previewQuestion, answer: (i) => previewAnswer(i) };
+const ApiContext = createContext<PlayerApi>(LIVE);
 
 const STEP_NAME: Record<PlayerStep["type"], string> = {
   study_deck: "Study",
@@ -38,12 +57,18 @@ export function LessonPlayer({
   courseSlug,
   steps,
   startAt,
+  preview = false,
+  exitHref,
 }: {
   lessonTitle: string;
   courseSlug: string;
   steps: PlayerStep[];
   startAt: number;
+  /** Staff preview: same player, nothing recorded. */
+  preview?: boolean;
+  exitHref?: string;
 }) {
+  const backHref = exitHref ?? `/play/course/${courseSlug}`;
   const [current, setCurrent] = useState(Math.min(startAt, steps.length - 1));
   const [earned, setEarned] = useState(0);
   const [finished, setFinished] = useState<Celebration | null>(startAt >= steps.length ? { xp: 0 } : null);
@@ -51,6 +76,11 @@ export function LessonPlayer({
 
   async function done(payload: Parameters<typeof completeStep>[0]) {
     setError(null);
+    if (preview) {
+      if (current === steps.length - 1) setFinished({ xp: 0 });
+      else setCurrent((c) => c + 1);
+      return;
+    }
     const r = await completeStep(payload);
     if (r.error) {
       setError(r.error);
@@ -79,7 +109,7 @@ export function LessonPlayer({
             New badge: {b}
           </p>
         ))}
-        <Link href={`/play/course/${courseSlug}`} className={buttonClass("primary", "mt-2")}>
+        <Link href={backHref} className={buttonClass("primary", "mt-2")}>
           Back to the course
         </Link>
         <Link href="/play" className="text-sm text-muted underline underline-offset-4">
@@ -91,9 +121,15 @@ export function LessonPlayer({
 
   const step = steps[current];
   return (
+    <ApiContext.Provider value={preview ? PREVIEW : LIVE}>
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-5">
+      {preview && (
+        <p role="status" className="rounded-band border border-sky bg-sky/15 px-3 py-2 text-sm">
+          Preview as a student. Nothing you do here is saved.
+        </p>
+      )}
       <header className="flex items-center justify-between gap-3">
-        <Link href={`/play/course/${courseSlug}`} className="text-sm text-muted underline underline-offset-4">
+        <Link href={backHref} className="text-sm text-muted underline underline-offset-4">
           Leave lesson
         </Link>
         <p className="text-sm font-semibold text-muted">{earned > 0 ? `+${earned} XP` : ""}</p>
@@ -122,15 +158,9 @@ export function LessonPlayer({
       {step.type === "practice" && <Practice key={step.id} step={step} onDone={(stats) => done({ stepId: step.id, stats })} />}
       {step.type === "make" && <Make key={step.id} step={step} onDone={(text) => done({ stepId: step.id, text })} />}
       {step.type === "reflect" && <Reflect key={step.id} step={step} onDone={(text) => done({ stepId: step.id, text })} />}
-      {step.type === "video" && (
-        <div className="rounded-band border border-line bg-surface p-5">
-          <p className="text-muted">The video for this step is on its way. Carry on with the next part.</p>
-          <Button className="mt-3" onClick={() => done({ stepId: step.id })}>
-            Continue
-          </Button>
-        </div>
-      )}
+      {step.type === "video" && <Watch key={step.id} step={step} onDone={(watchPct) => done({ stepId: step.id, watchPct })} />}
     </div>
+    </ApiContext.Provider>
   );
 }
 
@@ -211,12 +241,13 @@ function Practice({ step, onDone }: { step: { id: string; groups: string[] }; on
   const [stats, setStats] = useState<Stats>({ mistakes: 0, bounceBacks: 0, hintsUsed: 0 });
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const api = useContext(ApiContext);
   const shownAt = useRef(0);
 
   async function load(index: number, exclude: string[]) {
     setLoadError(null);
     try {
-      const p = await getStepQuestion(step.id, step.groups[index], exclude);
+      const p = await api.getQuestion(step.id, step.groups[index], exclude);
       setPayload(p);
       setResult(null);
       setHints(0);
@@ -240,7 +271,7 @@ function Practice({ step, onDone }: { step: { id: string; groups: string[] }; on
   async function answer(response: Response) {
     if (!payload) return;
     setBusy(true);
-    const r = await answerStepQuestion({
+    const r = await api.answer({
       stepId: step.id,
       questionId: payload.question.id,
       response,
@@ -322,6 +353,53 @@ function Practice({ step, onDone }: { step: { id: string; groups: string[] }; on
 }
 
 // ---------------------------------------------------------------------------
+
+/** Watch step: Try unlocks after most of the clip is watched (PRD §8). Rewatching is fine. */
+function Watch({ step, onDone }: { step: Extract<PlayerStep, { type: "video" }>; onDone: (watchPct: number) => Promise<void> }) {
+  const [pct, setPct] = useState(0);
+  const [busy, setBusy] = useState(false);
+  if (!step.video) {
+    // No playable video yet: the study cards cover this idea, so carry on.
+    return (
+      <div className="rounded-band border border-line bg-surface p-5">
+        <p className="text-muted">The video for this step is on its way. The cards cover the same idea, so carry on.</p>
+        <Button className="mt-3" onClick={() => onDone(100)}>
+          Continue
+        </Button>
+      </div>
+    );
+  }
+  const ready = pct >= step.minWatchPct;
+  return (
+    <div className="flex flex-col gap-3">
+      <VideoPlayer
+        playbackId={step.video.playbackId}
+        token={step.video.token}
+        thumbnailToken={step.video.thumbnailToken}
+        title={step.video.title}
+        startSec={step.startSec}
+        endSec={step.endSec}
+        captionsUrl={step.video.captionsUrl}
+        onProgress={(p) => setPct((old) => Math.max(old, p))}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted" aria-live="polite">
+          {ready ? "Nice, you've watched it." : `Watched ${pct}%. Keep going to unlock the next step.`}
+        </p>
+        <Button
+          disabled={!ready || busy}
+          onClick={async () => {
+            setBusy(true);
+            await onDone(pct);
+            setBusy(false);
+          }}
+        >
+          Continue
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function Make({ step, onDone }: { step: { prompt: string; rubric: string[] }; onDone: (text: string) => Promise<void> }) {
   const [text, setText] = useState("");

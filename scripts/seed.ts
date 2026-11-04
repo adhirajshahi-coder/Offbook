@@ -26,6 +26,11 @@ const db = createClient(url, secret, { auth: { persistSession: false } });
 
 const DEMO_PARENT = { email: "parent@demo.offbook.test", name: "Priya (demo)" };
 const DEMO_ADMIN = { email: "admin@demo.offbook.test", name: "Asha (demo admin)" };
+const DEMO_STAFF = [
+  { email: "content@demo.offbook.test", name: "Ravi (demo content)", role: "content" },
+  { email: "ops@demo.offbook.test", name: "Neha (demo ops)", role: "ops" },
+  { email: "teacher@demo.offbook.test", name: "Mr Iyer (demo teacher)", role: "teacher" },
+];
 const DEMO_CHILDREN = [
   { name: "Aarav", classGrade: 7 },
   { name: "Meera", classGrade: 9 },
@@ -173,6 +178,11 @@ async function seedDemoAccounts() {
     await db.from("staff").upsert({ id: adminId, name: DEMO_ADMIN.name, role: "admin", active: true }),
   );
 
+  for (const s of DEMO_STAFF) {
+    const id = await ensureUser(s.email, "staff", s.name);
+    check(`staff ${s.role}`, await db.from("staff").upsert({ id, name: s.name, role: s.role, active: true }));
+  }
+
   const parentId = await ensureUser(DEMO_PARENT.email, "parent", DEMO_PARENT.name);
   check(
     "demo parent",
@@ -279,6 +289,8 @@ async function seedBilling(demoParentId: string) {
     const { data: active } = await db.rpc("has_active_subscription", { p_student_id: kid.id });
     if (active) continue;
     const orderId = `demo_${kid.id}`;
+    const { data: existingDemo } = await db.from("subscriptions").select("status").eq("razorpay_order_id", orderId).maybeSingle();
+    if (existingDemo?.status === "active") continue;
     await db.from("subscriptions").delete().eq("razorpay_order_id", orderId).eq("status", "pending");
     check(
       `subscription ${kid.display_name}`,
@@ -305,7 +317,7 @@ async function setPin(client: SupabaseClient, studentId: string, pin: string) {
 }
 
 async function reset() {
-  for (const email of [DEMO_PARENT.email, DEMO_ADMIN.email]) {
+  for (const email of [DEMO_PARENT.email, DEMO_ADMIN.email, ...DEMO_STAFF.map((s) => s.email)]) {
     const id = await findUserId(email);
     if (id) await db.auth.admin.deleteUser(id);
   }

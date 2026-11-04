@@ -22,12 +22,12 @@ describe.skipIf(!enabled)("RLS", () => {
   let parentAId: string;
   let childOfA: string;
 
-  async function signedInParent(tag: string) {
+  async function signedInParent(tag: string, kind: "parent" | "staff" = "parent") {
     const email = `rls-${tag}-${Date.now()}@test.offbook.test`;
     const { data: user, error } = await admin.auth.admin.createUser({
       email,
       email_confirm: true,
-      user_metadata: { kind: "parent", name: `RLS ${tag}` },
+      user_metadata: { kind, name: `RLS ${tag}` },
     });
     if (error) throw error;
     created.push(user.user.id);
@@ -174,6 +174,47 @@ describe.skipIf(!enabled)("RLS", () => {
     it("keeps lesson content and answers away from families", async () => {
       expect((await parentA.from("questions").select("answer")).data ?? []).toHaveLength(0);
       expect((await parentA.from("lesson_steps").select("id")).data ?? []).toHaveLength(0);
+    });
+  });
+
+  describe("staff roles", () => {
+    async function staffAs(role: string) {
+      const u = await signedInParent(`staff-${role}`, "staff");
+      await admin.from("staff").insert({ id: u.id, name: `RLS ${role}`, role, active: true });
+      return u;
+    }
+
+    it("lets the content team edit lessons, but not viewers or parents", async () => {
+      const content = await staffAs("content");
+      const viewer = await staffAs("viewer");
+      const { data: lesson } = await admin.from("lessons").select("id, summary").limit(1).single();
+      const ok = await content.client.from("lessons").update({ summary: lesson!.summary }).eq("id", lesson!.id).select("id");
+      expect(ok.data).toHaveLength(1);
+      const no = await viewer.client.from("lessons").update({ summary: "hacked" }).eq("id", lesson!.id).select("id");
+      expect(no.data ?? []).toHaveLength(0);
+      const parent = await parentA.from("lessons").update({ summary: "hacked" }).eq("id", lesson!.id).select("id");
+      expect(parent.data ?? []).toHaveLength(0);
+    });
+
+    it("keeps teachers to their own videos", async () => {
+      const t1 = await staffAs("teacher");
+      const t2 = await staffAs("teacher");
+      const mine = await t1.client.from("videos").insert({ title: "RLS test clip", uploaded_by: t1.id, status: "uploading" }).select("id").single();
+      expect(mine.error).toBeNull();
+      expect((await t2.client.from("videos").select("id").eq("id", mine.data!.id)).data ?? []).toHaveLength(0);
+      const forged = await t2.client.from("videos").insert({ title: "Forged", uploaded_by: t1.id, status: "uploading" });
+      expect(forged.error).not.toBeNull();
+      await admin.from("videos").delete().eq("id", mine.data!.id);
+    });
+
+    it("lets ops grant a course and read the audit trail only as admin", async () => {
+      const ops = await staffAs("ops");
+      const { data: course } = await admin.from("courses").select("id").eq("slug", "critical-thinking").single();
+      const grant = await ops.client.from("course_overrides").insert({ student_id: childOfA, course_id: course!.id, action: "unlock", reason: "RLS test", created_by: ops.id });
+      expect(grant.error).toBeNull();
+      await ops.client.rpc("write_audit", { p_action: "test.rls", p_target_type: "student", p_target_id: childOfA, p_details: {} });
+      expect((await ops.client.from("audit_log").select("id").eq("action", "test.rls")).data ?? []).toHaveLength(0);
+      await admin.from("audit_log").delete().eq("action", "test.rls");
     });
   });
 

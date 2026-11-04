@@ -121,6 +121,7 @@ export async function completeStep(input: {
   stepId: string;
   stats?: { mistakes: number; bounceBacks: number; hintsUsed: number };
   text?: string;
+  watchPct?: number;
 }): Promise<Celebration & { error?: string }> {
   const step = await stepFor(input.stepId);
   const db = createAdminClient();
@@ -142,6 +143,7 @@ export async function completeStep(input: {
   const firstTime = !doneIds.has(step.id);
   let xp = 0;
   let response: Record<string, unknown> | null = null;
+  let watchPct: number | null = null;
 
   if (step.type === "practice") {
     // Anti-cheat: each group must have a correct answer on record.
@@ -176,6 +178,16 @@ export async function completeStep(input: {
       });
     }
     xp = firstTime ? XP.stepFirstTime : 0;
+  } else if (step.type === "video") {
+    // Most of the clip must be watched before moving on (PRD §8). If the
+    // video isn't playable yet, the step is skippable (cards cover it).
+    const videoId = step.content.video_id as string | undefined;
+    const { data: v } = videoId ? await db.from("videos").select("status").eq("id", videoId).maybeSingle() : { data: null };
+    const min = Number(step.content.min_watch_pct ?? 85);
+    const pct = Math.max(0, Math.min(100, Math.round(input.watchPct ?? 0)));
+    if (v?.status === "ready" && pct < min) return { xp: 0, error: `Watch at least ${min}% of the video first.` };
+    watchPct = pct;
+    xp = firstTime ? XP.stepFirstTime : 0;
   } else if (step.type === "reflect") {
     const text = (input.text ?? "").trim();
     if (text) response = { text: text.slice(0, 500) };
@@ -202,6 +214,7 @@ export async function completeStep(input: {
         completed_at: new Date().toISOString(),
         attempts: (existing?.attempts ?? 0) + 1,
         ...(response ? { response } : {}),
+        ...(watchPct !== null ? { watch_pct: watchPct } : {}),
       },
       { onConflict: "student_id,step_id" },
     ),

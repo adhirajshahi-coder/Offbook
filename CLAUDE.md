@@ -34,6 +34,11 @@ components/marketing  page blocks, TryItChallenge, PilotForm
 lib/play/          session (requireStudent), state (world, course, unlock), progress (XP, vault, mastery, badges), skills, stats
 app/play/learn/actions.ts  every Play write: verify child session → re-check unlocks → write with service role
 supabase/seed-data/content  written lessons (lesson-types.ts format), validated by content.test.ts
+app/hq/content     Content Studio: courses, missions, lesson editor (+ preview), question builder, skills, videos (Mux)
+app/hq/ops         students (overrides, PIN, placement), subscriptions and refunds
+app/hq/settings    team roles, audit log
+components/hq      HQ primitives: ui.tsx, forms.tsx, DataTable.tsx, CommandPalette.tsx
+lib/mux.ts         direct uploads, webhook signature, signed playback tokens
 lib/gamification/  xp, levels, unlocks, leitner: pure and unit-tested (Phase 2)
 supabase/migrations  SQL; RLS on every table
 supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games)

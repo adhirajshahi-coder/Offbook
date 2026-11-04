@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAnswer, isMeaningfulText, toClient, toRow, type QuestionRow } from "./questions";
+import { checkAnswer, fromRow, isMeaningfulText, toClient, toRow, type QuestionRow } from "./questions";
 import type { QuestionSeed } from "@/supabase/seed-data/lesson-types";
 
 const base = { explanation: "why", hint1: "h1", hint2: "h2", difficulty: 1 as const };
@@ -64,6 +64,23 @@ describe("toClient", () => {
     for (let i = 0; i < 20; i++) {
       const c = toClient(q);
       expect(c.type === "order" && c.items.join()).not.toBe("1,2,3");
+    }
+  });
+});
+
+describe("fromRow", () => {
+  it("round-trips every type through the DB format", () => {
+    const seeds: QuestionSeed[] = [
+      { ...base, type: "multiple_choice", prompt: "p", options: ["a", "b"], answer: 1 },
+      { ...base, type: "multi_select", prompt: "p", options: ["a", "b", "c"], answer: [0, 2] },
+      { ...base, type: "order", prompt: "p", items: ["1", "2", "3"] },
+      { ...base, type: "match_pairs", prompt: "p", pairs: [["a", "1"], ["b", "2"]] },
+      { ...base, type: "slider", prompt: "p", min: 0, max: 10, step: 1, unit: "₹", answer: 5, tolerance: 1 },
+      { ...base, type: "short_answer", prompt: "p", checklist: ["x"], minLength: 10 },
+    ];
+    for (const s of seeds) {
+      const r = row(s);
+      expect(fromRow({ ...r, hint1: "h1", hint2: "h2" })).toEqual(s);
     }
   });
 });
