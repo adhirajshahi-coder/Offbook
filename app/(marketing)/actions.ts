@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
+import { captureLead } from "@/lib/crm/leads";
 import { createAdminClient } from "@/lib/supabase/server";
 
 export type LeadState = { ok?: boolean; error?: string };
@@ -26,8 +27,8 @@ const leadSchema = z.object({
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "ref"];
 
 /**
- * Public forms → lead_submissions (PRD §12.3). Phase 5 turns these into CRM
- * contacts and deals with dedupe and owner assignment.
+ * Public forms → lead_submissions (raw record) → CRM contact and, for
+ * schools, a Schools deal with an owner and a first task (PRD §12.3).
  */
 export async function submitLead(prev: LeadState, formData: FormData): Promise<LeadState> {
   // Honeypot: real people never fill the hidden "website" field.
@@ -77,5 +78,14 @@ export async function submitLead(prev: LeadState, formData: FormData): Promise<L
     : await db.from("lead_submissions").insert(row);
 
   if (error) return { error: "We couldn't send that. Try again in a minute." };
+
+  // Into the CRM: contact (deduped), school deal, owner, first task.
+  try {
+    const lead = await captureLead({ ...parsed.data, utm, referrer: row.referrer });
+    await db.from("lead_submissions").update({ contact_id: lead.contactId, status: lead.dealId ? "converted" : "new" }).eq("email", parsed.data.email).is("contact_id", null);
+  } catch (e) {
+    // The submission is saved either way; HQ can import it later.
+    console.error("[crm] lead capture failed", e);
+  }
   return { ok: true };
 }

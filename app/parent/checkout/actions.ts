@@ -75,6 +75,7 @@ export async function startCheckout(studentId: string, code: string): Promise<St
   const q = quoteWith(plan, discount);
 
   const db = createAdminClient();
+  const { data: attribution } = await db.from("parents").select("referral_code_id").eq("id", parent.id).single();
   const base = {
     student_id: studentId,
     parent_id: parent.id,
@@ -84,6 +85,7 @@ export async function startCheckout(studentId: string, code: string): Promise<St
     discount_paise: q.discountPaise,
     coupon_id: discount.coupon?.id ?? null,
     school_id: discount.school?.id ?? null,
+    referral_code_id: attribution?.referral_code_id ?? null,
   };
 
   // A 100% discount needs no payment: activate straight away.

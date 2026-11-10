@@ -267,6 +267,66 @@ describe.skipIf(!enabled)("RLS", () => {
     });
   });
 
+  describe("crm", () => {
+    async function staffAs(role: string) {
+      const u = await signedInParent(`crm-${role}`, "staff");
+      await admin.from("staff").insert({ id: u.id, name: `RLS ${role}`, role, active: true });
+      return u;
+    }
+
+    it("lets sales write contacts and deals, viewers only read, parents see nothing", async () => {
+      const sales = await staffAs("sales");
+      const viewer = await staffAs("viewer");
+      const email = `rls-${Date.now()}@school.test`;
+      const c = await sales.client.from("contacts").insert({ name: "RLS contact", email, kind: "principal" }).select("id").single();
+      expect(c.error).toBeNull();
+      expect((await viewer.client.from("contacts").select("id").eq("id", c.data!.id)).data).toHaveLength(1);
+      expect((await viewer.client.from("contacts").update({ name: "Hacked" }).eq("id", c.data!.id).select("id")).data ?? []).toHaveLength(0);
+      expect((await parentA.from("contacts").select("id")).data ?? []).toHaveLength(0);
+      expect((await parentA.from("deals").select("id")).data ?? []).toHaveLength(0);
+      expect((await parentA.from("activities").insert({ type: "note", subject: "x", contact_id: c.data!.id })).error).not.toBeNull();
+      await admin.from("contacts").delete().eq("id", c.data!.id);
+    });
+
+    it("keeps deal status tied to the stage and records stage history", async () => {
+      const sales = await staffAs("sales");
+      const { data: p } = await admin.from("pipelines").select("id, pipeline_stages(id, name)").eq("slug", "schools").single();
+      const stages = p!.pipeline_stages as { id: string; name: string }[];
+      const first = stages.find((s) => s.name === "New")!.id;
+      const paid = stages.find((s) => s.name === "Paid")!.id;
+      const d = await sales.client.from("deals").insert({ pipeline_id: p!.id, stage_id: first, title: "RLS deal" }).select("id, status").single();
+      expect(d.data?.status).toBe("open");
+      const forged = await sales.client.from("deals").update({ status: "won" }).eq("id", d.data!.id).select("status").single();
+      expect(forged.data?.status).toBe("open");
+      const moved = await sales.client.from("deals").update({ stage_id: paid }).eq("id", d.data!.id).select("status, closed_at").single();
+      expect(moved.data?.status).toBe("won");
+      expect(moved.data?.closed_at).not.toBeNull();
+      const { data: hist } = await admin.from("deal_stage_history").select("to_stage").eq("deal_id", d.data!.id);
+      expect(hist).toHaveLength(2);
+      const { data: other } = await admin.from("pipelines").select("pipeline_stages(id)").eq("slug", "families").single();
+      const wrong = await sales.client.from("deals").update({ stage_id: (other!.pipeline_stages as { id: string }[])[0].id }).eq("id", d.data!.id);
+      expect(wrong.error).not.toBeNull();
+      await admin.from("deals").delete().eq("id", d.data!.id);
+    });
+
+    it("lets only admins change pipelines and custom fields", async () => {
+      const sales = await staffAs("sales");
+      const { data: st } = await admin.from("pipeline_stages").select("id, probability").limit(1).single();
+      expect((await sales.client.from("pipeline_stages").update({ probability: 99 }).eq("id", st!.id).select("id")).data ?? []).toHaveLength(0);
+      expect((await sales.client.from("custom_fields").insert({ object: "deal", key: "rls_x", label: "x", type: "text" })).error).not.toBeNull();
+    });
+
+    it("keeps saved views private unless shared", async () => {
+      const a = await staffAs("sales");
+      const b = await staffAs("marketing");
+      const mine = await a.client.from("saved_views").insert({ object: "contact", name: "Mine", filters: {} }).select("id").single();
+      const team = await a.client.from("saved_views").insert({ object: "contact", name: "Team", filters: {}, shared: true }).select("id").single();
+      const seen = (await b.client.from("saved_views").select("id").in("id", [mine.data!.id, team.data!.id])).data ?? [];
+      expect(seen.map((v) => v.id)).toEqual([team.data!.id]);
+      expect((await b.client.from("saved_views").delete().eq("id", team.data!.id).select("id")).data ?? []).toHaveLength(0);
+    });
+  });
+
   it("keeps the staff table and HQ content closed to parents", async () => {
     const staff = await parentA.from("staff").select("*");
     expect(staff.data ?? []).toHaveLength(0);

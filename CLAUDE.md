@@ -46,6 +46,11 @@ app/play/challenges  ask a parent -> parent grants in /parent/activity -> submit
 app/hq/review      review queue (SLA, assign, rubric, canned feedback) + Showcase moderation; effects in lib/hq/review.ts
 lib/portfolio.ts   portfolio, certificates (/certificates/[code]), public /p/[handle], /showcase: service role, filtered
 lib/play/league.ts weekly leagues: lazy join, live standings, rollover (/api/cron/league-rollover, Bearer CRON_SECRET)
+app/api/cron       league-rollover (Mondays) and crm-daily (daily); both need Authorization: Bearer $CRON_SECRET (lib/cron.ts)
+app/hq/crm         CRM: My day, pipelines (kanban + table + forecast), deals, contacts, organizations, families, campaigns/referrals, CSV import
+lib/crm/           rules.ts (stale, forecast, dedupe, round robin: pure, tested), leads.ts (captureLead), automations.ts (daily, idempotent), data.ts (timeline)
+app/hq/reports     Executive / Sales / Marketing / Operations / Learning dashboards (lib/reports.ts), CSV export (audited)
+lib/attribution.ts first-touch utm/ref cookie (proxy) → parents.signup_utm / referral_code_id at sign-up
 supabase/migrations  SQL; RLS on every table
 supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games)
 scripts/seed.ts    npm run seed / seed:reset

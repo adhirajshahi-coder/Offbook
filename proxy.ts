@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ATTR_COOKIE, ATTR_MAX_AGE, attributionFromSearch } from "@/lib/attribution";
 import {
   isSupabaseConfigured,
   supabasePublishableKey,
@@ -13,8 +14,14 @@ const PROTECTED = ["/parent", "/play", "/hq"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const attribution = request.cookies.has(ATTR_COOKIE) ? null : attributionFromSearch(request.nextUrl.searchParams);
+  // First touch only: never overwrite an existing attribution cookie.
+  const withAttribution = (res: NextResponse) => {
+    if (attribution) res.cookies.set(ATTR_COOKIE, JSON.stringify(attribution), { maxAge: ATTR_MAX_AGE, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+    return res;
+  };
 
-  if (!isSupabaseConfigured()) return response;
+  if (!isSupabaseConfigured()) return withAttribution(response);
 
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
     cookies: {
@@ -44,10 +51,10 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(pathname)}`;
-    return NextResponse.redirect(url);
+    return withAttribution(NextResponse.redirect(url));
   }
 
-  return response;
+  return withAttribution(response);
 }
 
 export const config = {
