@@ -1,6 +1,8 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { ATTR_COOKIE, parseAttribution } from "@/lib/attribution";
 import { z } from "zod";
 import { isDevLoginEnabled, isSupabaseConfigured, siteUrl } from "@/lib/env";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -14,6 +16,17 @@ export type OtpState = {
 
 const emailSchema = z.email("Enter a valid email address");
 const codeSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit code from the email");
+
+/** Copy first-touch UTM / referral onto a new parent, once (PRD §12.5). */
+async function recordAttribution(userId: string) {
+  const attr = parseAttribution((await cookies()).get(ATTR_COOKIE)?.value);
+  if (!Object.keys(attr).length) return;
+  const db = createAdminClient();
+  const { data: parent } = await db.from("parents").select("signup_utm, referral_code_id").eq("id", userId).maybeSingle();
+  if (!parent || Object.keys(parent.signup_utm ?? {}).length || parent.referral_code_id) return;
+  const { data: code } = attr.ref ? await db.from("referral_codes").select("id").eq("code", attr.ref.toUpperCase()).eq("active", true).maybeSingle() : { data: null };
+  await db.from("parents").update({ signup_utm: attr, referral_code_id: code?.id ?? null }).eq("id", userId);
+}
 
 /** Only allow same-site relative paths as post-login destinations. */
 function safeNext(next: FormDataEntryValue | null): string | null {
@@ -77,6 +90,7 @@ export async function verifyCode(prev: OtpState, formData: FormData): Promise<Ot
   if (error || !data.user) {
     return { step: "code", email, error: "That code didn't work. Check it, or ask for a new one." };
   }
+  await recordAttribution(data.user.id);
 
   redirect(safeNext(formData.get("next")) ?? (await homeFor(data.user.id)));
 }

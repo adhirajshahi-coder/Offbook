@@ -34,8 +34,21 @@ const NAV: NavItem[] = [
     ],
   },
   { label: "Review queue", href: "/hq/review", roles: ["reviewer", "ops"] },
-  { label: "CRM", href: "/hq/crm", roles: ["sales", "marketing"] },
-  { label: "Marketing", href: "/hq/marketing", roles: ["marketing"] },
+  {
+    label: "CRM",
+    href: "/hq/crm",
+    roles: ["sales", "marketing", "ops", "viewer"],
+    children: [
+      { label: "My day", href: "/hq/crm", roles: ["sales", "marketing"] },
+      { label: "Schools pipeline", href: "/hq/crm/pipeline/schools" },
+      { label: "Families pipeline", href: "/hq/crm/pipeline/families" },
+      { label: "Organizations", href: "/hq/crm/organizations" },
+      { label: "Contacts", href: "/hq/crm/contacts" },
+      { label: "Families", href: "/hq/crm/families" },
+      { label: "Campaigns and referrals", href: "/hq/crm/campaigns", roles: ["sales", "marketing", "viewer"] },
+      { label: "Import", href: "/hq/crm/import", roles: ["sales", "marketing"] },
+    ],
+  },
   { label: "Reports", href: "/hq/reports", roles: ["sales", "marketing", "ops", "viewer"] },
   {
     label: "Settings",
@@ -44,6 +57,8 @@ const NAV: NavItem[] = [
     children: [
       { label: "Team", href: "/hq/settings/team" },
       { label: "Audit log", href: "/hq/settings/audit" },
+      { label: "Pipelines", href: "/hq/settings/pipelines" },
+      { label: "Custom fields", href: "/hq/settings/fields" },
     ],
   },
 ];

@@ -16,6 +16,9 @@ const DEV_USERS = [
   { email: "ops@demo.offbook.test", label: "HQ ops" },
   { email: "teacher@demo.offbook.test", label: "HQ teacher" },
   { email: "reviewer@demo.offbook.test", label: "HQ reviewer" },
+  { email: "sales@demo.offbook.test", label: "HQ sales" },
+  { email: "marketing@demo.offbook.test", label: "HQ marketing" },
+  { email: "viewer@demo.offbook.test", label: "HQ viewer" },
 ];
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {

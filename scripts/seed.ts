@@ -12,6 +12,7 @@ import { BRIDGE, COURSES, GAMES, SLOTS, TRACKS } from "../supabase/seed-data/cur
 import { POLICIES } from "../supabase/seed-data/policies";
 import { CONSENT_VERSION } from "../lib/consent";
 import { seedContent } from "./seed-content";
+import { seedCrm } from "./seed-crm";
 import { BUDGET_BAZAAR, CHALLENGES, DECISION_DOJO } from "../supabase/seed-data/games";
 
 config({ path: ".env.local" });
@@ -32,6 +33,10 @@ const DEMO_STAFF = [
   { email: "ops@demo.offbook.test", name: "Neha (demo ops)", role: "ops" },
   { email: "teacher@demo.offbook.test", name: "Mr Iyer (demo teacher)", role: "teacher" },
   { email: "reviewer@demo.offbook.test", name: "Sana (demo reviewer)", role: "reviewer" },
+  { email: "sales@demo.offbook.test", name: "Arjun (demo sales)", role: "sales" },
+  { email: "sales2@demo.offbook.test", name: "Kavya (demo sales)", role: "sales" },
+  { email: "marketing@demo.offbook.test", name: "Ishaan (demo marketing)", role: "marketing" },
+  { email: "viewer@demo.offbook.test", name: "Dev (demo viewer)", role: "viewer" },
 ];
 const DEMO_CHILDREN = [
   { name: "Aarav", classGrade: 7 },
@@ -373,7 +378,7 @@ async function reset() {
     const id = await findUserId(email);
     if (id) await db.auth.admin.deleteUser(id);
   }
-  for (const table of ["challenges", "games", "courses", "course_slots", "tracks"]) {
+  for (const table of ["activities", "deals", "referral_codes", "contacts", "organizations", "campaigns", "challenges", "games", "courses", "course_slots", "tracks"]) {
     check(`clear ${table}`, await db.from(table).delete().not("id", "is", null));
   }
   console.log("✓ reset demo accounts and content");
@@ -388,6 +393,11 @@ async function main() {
   await seedBilling(demoParentId);
   // Demo children join weekly leagues (real families opt in from the Parent Zone).
   check("league opt-in", await db.from("students").update({ league_opt_in: true }).eq("parent_id", demoParentId).select("id"));
+  const ids = async (email: string) => findUserId(email);
+  await seedCrm(db, {
+    salesIds: (await Promise.all(["sales@demo.offbook.test", "sales2@demo.offbook.test"].map(ids))).filter(Boolean) as string[],
+    marketingId: await ids("marketing@demo.offbook.test"),
+  });
 }
 
 main().catch((err) => {
