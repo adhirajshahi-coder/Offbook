@@ -102,7 +102,7 @@ export default async function CoursePage({ params }: PageProps<"/play/course/[sl
               );
             })}
             {upcoming.map((m) => (
-              <div key={m.title} className="rounded-band border border-dashed border-line p-4 opacity-80">
+              <div key={m.title} className="rounded-band border border-dashed border-line p-4">
                 <p className="text-sm font-semibold text-muted">Coming soon</p>
                 <h3 className="font-display text-lg font-black">{m.title}</h3>
                 <p className="text-sm text-muted">You&apos;ll make: {m.output_description}</p>

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cronGuard } from "@/lib/cron";
+import { recordCronRun } from "@/lib/monitoring";
 import { rollover } from "@/lib/play/league";
 
 /**
@@ -10,7 +11,9 @@ import { rollover } from "@/lib/play/league";
 async function handle(request: NextRequest) {
   const denied = cronGuard(request);
   if (denied) return denied;
-  return NextResponse.json(await rollover());
+  const report = await rollover();
+  await recordCronRun("league-rollover", report);
+  return NextResponse.json(report);
 }
 
 export const GET = handle;

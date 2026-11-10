@@ -1,5 +1,6 @@
 import "server-only";
 import { sendEmail } from "@/lib/email";
+import { inactiveNudgeEmail, renewalReminderEmail, reviewAlertEmail } from "@/lib/email-templates";
 import { SLA_ALERT_HOURS } from "@/lib/hq/review";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -11,7 +12,6 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 type Db = ReturnType<typeof createAdminClient>;
 const DAY = 86_400_000;
-const SITE = () => process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const PILOT_FEEDBACK_DAYS = 14;
 export const RENEWAL_WINDOW_DAYS = 30;
@@ -124,9 +124,7 @@ export async function syncFamilies(db: Db, now: Date) {
       if (mark && (await once(db, `renewal-reminder:${s.id}:${mark}`))) {
         await sendEmail({
           to: parent.email,
-          subject: `${child}'s Offbook year ends in ${daysLeft} days`,
-          text: `Hi${parent.name ? ` ${parent.name.split(" ")[0]}` : ""},\n\n${child}'s Offbook plan ends on ${ends.toLocaleDateString("en-IN", { day: "numeric", month: "long", timeZone: "Asia/Kolkata" })}. If you'd like another year, you can renew from the Parent Zone: ${SITE()}/parent/billing\n\nIf not, there's nothing to do: the plan simply ends, and you won't be charged. Our refund policy: ${SITE()}/refunds\n\nTo stop these reminders, turn them off under Billing.\n\n— Offbook`,
-          html: `<p>Hi${parent.name ? ` ${escape(parent.name.split(" ")[0])}` : ""},</p><p>${escape(child)}'s Offbook plan ends on ${ends.toLocaleDateString("en-IN", { day: "numeric", month: "long", timeZone: "Asia/Kolkata" })}. If you'd like another year, you can <a href="${SITE()}/parent/billing">renew from the Parent Zone</a>.</p><p>If not, there's nothing to do: the plan simply ends, and you won't be charged. <a href="${SITE()}/refunds">Our refund policy</a>.</p><p>To stop these reminders, turn them off under Billing.</p><p>— Offbook</p>`,
+          ...renewalReminderEmail({ parentName: parent.name, childName: child, daysLeft, endsOn: ends.toLocaleDateString("en-IN", { day: "numeric", month: "long", timeZone: "Asia/Kolkata" }) }),
         });
         reminders++;
       }
@@ -135,9 +133,6 @@ export async function syncFamilies(db: Db, now: Date) {
   return { families: families.length, created, moved, renewals, reminders };
 }
 
-function escape(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
 
 // ---------------------------------------------------------------------------
 // Schools: pilots running too long without feedback
@@ -203,12 +198,7 @@ export async function inactiveStudents(db: Db, now: Date) {
     const { data: fam } = await db.from("families").select("at_risk_since").eq("parent_id", parentId).single();
     if (!(await once(db, `inactive:${parentId}:${(fam?.at_risk_since ?? week).slice(0, 10)}`))) continue;
     const who = names.join(" and ");
-    await sendEmail({
-      to: parent.email,
-      subject: `A small idea for ${who} this week`,
-      text: `Hi${parent.name ? ` ${parent.name.split(" ")[0]}` : ""},\n\n${who} hasn't opened Offbook for about a week. That's completely normal: school gets busy.\n\nIf it helps, a lesson takes about 10 minutes, and the Daily Warm-up is just 3 questions. Today could be a nice day to pick it back up together: ${SITE()}/play\n\nNo pressure at all.\n\n— Offbook`,
-      html: `<p>Hi${parent.name ? ` ${escape(parent.name.split(" ")[0])}` : ""},</p><p>${escape(who)} hasn't opened Offbook for about a week. That's completely normal: school gets busy.</p><p>If it helps, a lesson takes about 10 minutes, and the Daily Warm-up is just 3 questions. Today could be a nice day to <a href="${SITE()}/play">pick it back up together</a>.</p><p>No pressure at all.</p><p>— Offbook</p>`,
-    });
+    await sendEmail({ to: parent.email, ...inactiveNudgeEmail({ parentName: parent.name, childNames: who }) });
     emails++;
   }
   return { atRisk: atRiskParents.size, cleared: clear.length, emails };
@@ -228,12 +218,7 @@ export async function capstoneAlerts(db: Db, now: Date) {
   for (const r of reviewers ?? []) {
     const { data } = await db.auth.admin.getUserById(r.id);
     if (!data.user?.email) continue;
-    await sendEmail({
-      to: data.user.email,
-      subject: `${fresh.length} ${fresh.length === 1 ? "submission has" : "submissions have"} waited over ${SLA_ALERT_HOURS} hours`,
-      text: `Students are waiting on feedback. Open the review queue: ${SITE()}/hq/review`,
-      html: `<p>Students are waiting on feedback. <a href="${SITE()}/hq/review">Open the review queue</a>.</p>`,
-    });
+    await sendEmail({ to: data.user.email, ...reviewAlertEmail({ count: fresh.length, hours: SLA_ALERT_HOURS }) });
   }
   return { alerted: fresh.length };
 }

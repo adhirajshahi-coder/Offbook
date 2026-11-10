@@ -1,5 +1,6 @@
 import "server-only";
-import { receiptEmail, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { receiptEmail } from "@/lib/email-templates";
 import { siteUrl } from "@/lib/env";
 import { formatDate } from "@/lib/parent-data";
 import { formatRupees, normaliseCode, quote, type Coupon, type Quote } from "@/lib/pricing";

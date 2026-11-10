@@ -1,17 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { Lexend, Outfit } from "next/font/google";
+import { ServiceWorker } from "@/components/Pwa";
 import "./globals.css";
 
+// Variable fonts: one file each instead of one per weight, which keeps the
+// first paint fast on mobile data (PRD §17: LCP under 2.5 s).
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],
-  weight: ["800", "900"],
 });
 
 const lexend = Lexend({
   variable: "--font-lexend",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -21,6 +22,8 @@ export const metadata: Metadata = {
   },
   description:
     "Offbook teaches money, communication, AI, entrepreneurship and leadership through short lessons, games and real projects.",
+  appleWebApp: { capable: true, title: "Offbook", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
@@ -33,7 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${outfit.variable} ${lexend.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   );
 }

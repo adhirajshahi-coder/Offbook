@@ -177,3 +177,12 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Calm motion (Me → Settings): same as the OS setting, chosen in the app. */
+html[data-calm="true"] *,
+html[data-calm="true"] *::before,
+html[data-calm="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

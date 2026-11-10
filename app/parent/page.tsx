@@ -6,12 +6,21 @@ import { BAND_LABEL } from "@/lib/bands";
 import { formatDate, getChildren } from "@/lib/parent-data";
 import { formatRupees } from "@/lib/pricing";
 import { getPlan } from "@/lib/public-data";
+import { istWeekStart } from "@/lib/gamification/streaks";
+import { createAdminClient } from "@/lib/supabase/server";
+import { childWeek } from "@/lib/weekly";
 import { AddChildForm } from "./AddChildForm";
 
 export const metadata: Metadata = { title: "Parent Zone" };
 
 export default async function ParentHome({ searchParams }: PageProps<"/parent">) {
   const [parent, children, plan, { paid }] = await Promise.all([requireParent(), getChildren(), getPlan(), searchParams]);
+  // Children come from the RLS-scoped list above, so only this parent's own children are read here.
+  const admin = createAdminClient();
+  const { data: goals } = children.length ? await admin.from("students").select("id, weekly_goal").in("id", children.map((c) => c.id)) : { data: [] };
+  const goalOf = new Map((goals ?? []).map((g) => [g.id, g.weekly_goal]));
+  const weekStart = istWeekStart(new Date());
+  const weeks = new Map(await Promise.all(children.map(async (c) => [c.id, await childWeek(admin, { id: c.id, display_name: c.display_name, weekly_goal: goalOf.get(c.id) ?? 4 }, weekStart)] as const)));
 
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_340px]">
@@ -34,6 +43,12 @@ export default async function ParentHome({ searchParams }: PageProps<"/parent">)
                   <p className="text-sm text-muted">
                     Class {c.class_grade} · {BAND_LABEL[c.band]} · Level {c.content_level}
                   </p>
+                  {weeks.get(c.id) && c.status === "active" && (
+                    <p className="mt-1 text-sm">
+                      This week: {weeks.get(c.id)!.lessons} {weeks.get(c.id)!.lessons === 1 ? "lesson" : "lessons"}, {weeks.get(c.id)!.activeDays} of {weeks.get(c.id)!.goal} goal days
+                      {weeks.get(c.id)!.askAbout && <span className="block text-muted">Ask about: “{weeks.get(c.id)!.askAbout}”</span>}
+                    </p>
+                  )}
                   <p className="mt-1 text-sm">
                     {c.status === "paused" ? (
                       <span className="text-muted">Paused: consent withdrawn</span>

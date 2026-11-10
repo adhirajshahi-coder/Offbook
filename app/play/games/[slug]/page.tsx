@@ -3,17 +3,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Kube } from "@/components/kid/Kube";
 import { buttonClass } from "@/components/ui/button";
-import { gameXpToday, levelsOf, loadGames, openLevels, parseGameConfig } from "@/lib/play/games";
+import { gameXpToday, levelsOf, levelTitles, loadGames, openLevels, parseGameConfig } from "@/lib/play/games";
 import { requireStudent } from "@/lib/play/session";
 import { createAdminClient } from "@/lib/supabase/server";
-import { BudgetBazaar } from "./BudgetBazaar";
-import { DecisionDojo } from "./DecisionDojo";
+import { GameView } from "./GameView";
 
 export const metadata: Metadata = { title: "Game" };
 
 const INTRO: Record<string, string> = {
   "budget-bazaar": "Run your pocket money week by week. Pay for needs, handle surprises, save toward a goal, and still have some fun.",
   "decision-dojo": "Step into a tricky situation. Each choice changes the story, and the debrief shows the thinking behind it.",
+  "say-it-better": "Rapid rounds: pick the clearer, kinder or more persuasive line. Then a bonus 30-second speaking challenge.",
+  "bot-builder": "Train a tiny AI by labelling examples, test it on new ones, then write prompts that get good answers.",
+  "startup-sprint": "Pick a problem, interview customers, set a price and find buyers. Your decisions decide the sales.",
 };
 
 export default async function GamePage({ params }: PageProps<"/play/games/[slug]">) {
@@ -42,16 +44,10 @@ export default async function GamePage({ params }: PageProps<"/play/games/[slug]
 
   const all = levelsOf(game);
   const open = openLevels(all, card.bestWonLevel);
-  const levelTitle = (l: number) =>
-    game.slug === "budget-bazaar"
-      ? (game.config.levels.find((x) => x.level === l)?.title ?? `Level ${l}`)
-      : (["Warm-up", "Trickier", "Expert"][l - 1] ?? `Level ${l}`);
+  const titles = levelTitles(game);
+  const levelTitle = (l: number) => titles.get(l) ?? `Level ${l}`;
   const levels = all.map((l) => ({ level: l, title: levelTitle(l), open: open.includes(l), won: l <= card.bestWonLevel }));
   const intro = card.description || INTRO[slug] || "";
 
-  return game.slug === "budget-bazaar" ? (
-    <BudgetBazaar config={game.config} levels={levels} xpToday={xpToday} title={card.title} intro={intro} />
-  ) : (
-    <DecisionDojo config={game.config} levels={levels} xpToday={xpToday} title={card.title} intro={intro} />
-  );
+  return <GameView slug={game.slug} config={game.config} levels={levels} xpToday={xpToday} title={card.title} intro={intro} />;
 }

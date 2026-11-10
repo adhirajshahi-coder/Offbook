@@ -32,6 +32,16 @@ export async function createClient() {
 }
 
 /**
+ * Anonymous client with no cookies, for public data (zones, plans, policies).
+ * Reading no cookies lets marketing pages render statically and stay fast.
+ */
+export function createPublicClient() {
+  return createPlainClient(supabaseUrl, supabasePublishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+/**
  * Service-role client. Bypasses RLS: use only in trusted server code
  * (webhooks, seed scripts, admin actions that also write the audit log).
  */

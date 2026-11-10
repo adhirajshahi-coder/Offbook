@@ -40,8 +40,9 @@ app/hq/settings    team roles, audit log
 components/hq      HQ primitives: ui.tsx, forms.tsx, DataTable.tsx, CommandPalette.tsx
 lib/mux.ts         direct uploads, webhook signature, signed playback tokens
 lib/gamification/  xp, levels, unlocks, leitner, leagues: pure and unit-tested
-lib/games/         seeded game engines (rng, budget-bazaar, decision-dojo, xp caps): pure; the server replays inputs to score
-app/play/games     GameShell + game screens; actions start a seeded session and replay the run (50 XP/session, 150/day)
+lib/games/         seeded game engines (budget-bazaar, decision-dojo, say-it-better, bot-builder, startup-sprint) + registry.ts (schema, inputs, replay, levels): pure; the server replays inputs to score
+app/play/games     GameShell + game screens (GameView lazy-loads each); actions start a seeded session and replay the run (50 XP/session, 150/day)
+lib/play/locker.ts coins (1 per 10 XP) and cosmetics; Kube renders accessories/colours by asset key
 app/play/challenges  ask a parent -> parent grants in /parent/activity -> submit text or link -> review queue
 app/hq/review      review queue (SLA, assign, rubric, canned feedback) + Showcase moderation; effects in lib/hq/review.ts
 lib/portfolio.ts   portfolio, certificates (/certificates/[code]), public /p/[handle], /showcase: service role, filtered
@@ -51,10 +52,15 @@ app/hq/crm         CRM: My day, pipelines (kanban + table + forecast), deals, co
 lib/crm/           rules.ts (stale, forecast, dedupe, round robin: pure, tested), leads.ts (captureLead), automations.ts (daily, idempotent), data.ts (timeline)
 app/hq/reports     Executive / Sales / Marketing / Operations / Learning dashboards (lib/reports.ts), CSV export (audited)
 lib/attribution.ts first-touch utm/ref cookie (proxy) → parents.signup_utm / referral_code_id at sign-up
+lib/email-templates.ts every email (one layout, plain-text twin); previews at HQ → Settings → Email templates
+lib/monitoring.ts  first-party error log (instrumentation.ts onRequestError + /api/errors) and cron heartbeats; HQ → Settings → System
+lib/weekly.ts      weekly parent summary (Parent Zone card + Monday email)
+public/sw.js       service worker: static assets + offline page only, never pages or API (child data)
 supabase/migrations  SQL; RLS on every table
 supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games)
 scripts/seed.ts    npm run seed / seed:reset
-tests/             rls.test.ts (live DB, `npm run test:db`), stubs
+tests/             rls.test.ts (live DB, `npm run test:db`), e2e/ (Playwright critical path, `npm run test:e2e` vs a prod build on :3001), stubs
+scripts/           lighthouse.mjs, load-test.mjs, test-session.ts (mint test cookies), make-icons.mjs
 docs/              PRD, curriculum, mapping, DECISIONS.md
 ```
 
@@ -74,7 +80,8 @@ Logo: OFF in ink (white on dark), BOOK in violet. Never recolour or stretch.
 - Money is in paise (integer). The price comes from `plans`, never from code.
 
 ## Commands
-`npm run dev` · `npm run typecheck` · `npm run lint` · `npm test` · `npm run test:db` · `npm run db:push` · `npm run db:types` · `npm run seed` · `npm run seed:reset`
+`npm run dev` · `npm run typecheck` · `npm run lint` · `npm test` · `npm run test:db` · `npm run test:e2e` · `npm run lighthouse` · `npm run db:push` · `npm run db:types` · `npm run seed` · `npm run seed:reset`
+Launch readiness: `docs/LAUNCH_CHECKLIST.md`. In Git Bash, pass URL paths with `MSYS_NO_PATHCONV=1` or they become Windows paths.
 
 ## Phases (PRD §16 + mapping)
 0. Foundation: scaffold, tokens, bands, logo, Kube, identity and content migrations with RLS, auth, role guards, seed skeleton.

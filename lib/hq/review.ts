@@ -1,6 +1,7 @@
 import "server-only";
 import { randomInt } from "node:crypto";
 import { sendEmail } from "@/lib/email";
+import { courseCompleteEmail } from "@/lib/email-templates";
 import { RANK_LABEL, XP, type Rank } from "@/lib/gamification/xp";
 import { awardXp, checkBadges, refreshTotals } from "@/lib/play/progress";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -40,9 +41,6 @@ export function certificateCode(): string {
   return `OB-${part()}-${part()}`;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
 
 function summaryOf(content: { text?: string } | null): string {
   const t = (content?.text ?? "").replace(/\s+/g, " ").trim();
@@ -90,13 +88,10 @@ export async function completeCapstone(db: Db, sub: { id: string; student_id: st
   const { data: parent } = await db.from("parents").select("email, name").eq("id", student.parent_id).single();
   if (parent?.email) {
     const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const url = `${site}/certificates/${code}`;
     const rank = RANK_LABEL[totals.rank as Rank] ?? totals.rank;
     await sendEmail({
       to: parent.email,
-      subject: `${student.display_name} finished ${course.title}!`,
-      text: `${student.display_name}'s capstone for ${course.title} was approved by an Offbook reviewer.\n\nTheir certificate: ${url}\n\nThey're now ${rank} with ${totals.xp} XP. The next course on their Journey is open.\n\n— Offbook`,
-      html: `<p>${escapeHtml(student.display_name)}'s capstone for <strong>${escapeHtml(course.title)}</strong> was approved by an Offbook reviewer.</p><p><a href="${url}">See their certificate</a></p><p>They're now ${escapeHtml(rank)} with ${totals.xp} XP. The next course on their Journey is open.</p><p>— Offbook</p>`,
+      ...courseCompleteEmail({ parentName: parent.name, childName: student.display_name, courseTitle: course.title, certificateUrl: `${site}/certificates/${code}`, rank, xp: totals.xp }),
     });
   }
   return { code };

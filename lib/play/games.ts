@@ -1,40 +1,31 @@
 import "server-only";
-import { budgetConfigSchema, type BudgetConfig } from "@/lib/games/budget-bazaar";
-import { dojoConfigSchema, type DojoConfig } from "@/lib/games/decision-dojo";
+import { configIssues, gameLevels, isGameSlug, parseConfig, PLAYABLE, type GameSlug } from "@/lib/games/registry";
 import { istDay } from "@/lib/gamification/streaks";
 import type { Student } from "@/lib/play/session";
 import { loadWorld } from "@/lib/play/state";
 import { createAdminClient } from "@/lib/supabase/server";
 
-/** Games with a playable engine in this release; the rest show as coming soon. */
-export const PLAYABLE = ["budget-bazaar", "decision-dojo"] as const;
-export type PlayableSlug = (typeof PLAYABLE)[number];
+export { PLAYABLE };
 
-export type GameConfig = { slug: "budget-bazaar"; config: BudgetConfig } | { slug: "decision-dojo"; config: DojoConfig };
+export type GameConfig = { slug: GameSlug; config: unknown };
 
 export function parseGameConfig(slug: string, raw: unknown): GameConfig | null {
-  if (slug === "budget-bazaar") {
-    const p = budgetConfigSchema.safeParse(raw);
-    return p.success ? { slug, config: p.data } : null;
-  }
-  if (slug === "decision-dojo") {
-    const p = dojoConfigSchema.safeParse(raw);
-    return p.success ? { slug, config: p.data } : null;
-  }
-  return null;
+  if (!isGameSlug(slug)) return null;
+  const config = parseConfig(slug, raw);
+  return config === null ? null : { slug, config };
 }
 
 /** Readable problems with a config, for the HQ editor. Empty means valid; null means no editor for this game yet. */
 export function gameConfigIssues(slug: string, raw: unknown): string[] | null {
-  const schema = slug === "budget-bazaar" ? budgetConfigSchema : slug === "decision-dojo" ? dojoConfigSchema : null;
-  if (!schema) return null;
-  const r = schema.safeParse(raw);
-  return r.success ? [] : r.error.issues.slice(0, 12).map((i) => `${i.path.join(".") || "config"}: ${i.message}`);
+  return configIssues(slug, raw);
 }
 
 export function levelsOf(g: GameConfig): number[] {
-  const levels = g.slug === "budget-bazaar" ? g.config.levels.map((l) => l.level) : g.config.scenarios.map((s) => s.level);
-  return [...new Set(levels)].sort((a, b) => a - b);
+  return gameLevels(g.slug, g.config).map((l) => l.level);
+}
+
+export function levelTitles(g: GameConfig): Map<number, string> {
+  return new Map(gameLevels(g.slug, g.config).map((l) => [l.level, l.title]));
 }
 
 export type GameCard = {
@@ -76,7 +67,7 @@ export async function loadGames(student: Student): Promise<GameCard[]> {
   const course = new Map(world.courses.map((c) => [c.id, c]));
 
   return (games.data ?? [])
-    .filter((g) => g.status === "published" || !(PLAYABLE as readonly string[]).includes(g.slug))
+    .filter((g) => g.status === "published" || !isGameSlug(g.slug))
     .map((g) => {
       const c = g.unlock_course_id ? course.get(g.unlock_course_id) : undefined;
       const state = g.unlock_course_id ? world.unlock.states[g.unlock_course_id] : "completed";
@@ -88,7 +79,7 @@ export async function loadGames(student: Student): Promise<GameCard[]> {
         description: g.description,
         trackName: trackName.get(g.track_id) ?? "",
         unlockCourse: c ? { slug: c.slug, title: c.short_title ?? c.title } : null,
-        playable: g.status === "published" && (PLAYABLE as readonly string[]).includes(g.slug),
+        playable: g.status === "published" && isGameSlug(g.slug),
         unlocked: state !== undefined && state !== "locked" && state !== "available",
         bestWonLevel: Math.max(0, ...mine.filter((s) => s.won).map((s) => s.level)),
         plays: mine.length,

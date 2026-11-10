@@ -59,6 +59,8 @@ const NAV: NavItem[] = [
       { label: "Audit log", href: "/hq/settings/audit" },
       { label: "Pipelines", href: "/hq/settings/pipelines" },
       { label: "Custom fields", href: "/hq/settings/fields" },
+      { label: "System", href: "/hq/settings/system" },
+      { label: "Email templates", href: "/hq/settings/emails" },
     ],
   },
 ];

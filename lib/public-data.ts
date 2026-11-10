@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/server";
 
 /** Read-only data the public site shows. Everything comes from the DB. */
 
@@ -16,7 +16,7 @@ export type Zone = {
 
 export const getZones = cache(async (): Promise<Zone[]> => {
   if (!isSupabaseConfigured()) return [];
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("tracks")
     .select("id, slug, name, zone_name, color, order_index, courses(slug, title, short_title, level, promise, priority, kind, order_index, capstone)")
@@ -46,7 +46,7 @@ export type PublicPlan = {
 
 export const getPlan = cache(async (slug = "annual"): Promise<PublicPlan | null> => {
   if (!isSupabaseConfigured()) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("plans")
     .select("id, slug, name, description, price_paise, tax_rate, tax_inclusive, duration_days, features")
@@ -60,7 +60,7 @@ export type Policy = { slug: string; title: string; body: string; version: strin
 
 export const getPolicy = cache(async (slug: string): Promise<Policy | null> => {
   if (!isSupabaseConfigured()) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("policies").select("*").eq("slug", slug).maybeSingle();
   return data as Policy | null;
 });
