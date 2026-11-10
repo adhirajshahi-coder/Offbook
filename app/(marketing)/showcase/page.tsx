@@ -6,6 +6,9 @@ import { showcaseItems, SOURCE_LABEL } from "@/lib/portfolio";
 
 export const metadata: Metadata = { title: "Showcase", description: "Real projects by Offbook students, shared with parent consent." };
 
+// Static for speed; moderation revalidates it immediately, and this is a safety net.
+export const revalidate = 3600;
+
 // Only work a parent agreed to share AND our team approved (PRD §7.9, §13).
 // First names and class band only.
 export default async function ShowcasePage() {

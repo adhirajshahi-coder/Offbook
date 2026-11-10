@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cronGuard } from "@/lib/cron";
+import { recordCronRun } from "@/lib/monitoring";
 import { runDailyAutomations } from "@/lib/crm/automations";
 
 /**
@@ -10,7 +11,9 @@ import { runDailyAutomations } from "@/lib/crm/automations";
 async function handle(request: NextRequest) {
   const denied = cronGuard(request);
   if (denied) return denied;
-  return NextResponse.json(await runDailyAutomations());
+  const report = await runDailyAutomations();
+  await recordCronRun("crm-daily", report);
+  return NextResponse.json(report);
 }
 
 export const GET = handle;

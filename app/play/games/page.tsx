@@ -50,7 +50,7 @@ export default async function GamesPage() {
                     {body}
                   </Link>
                 ) : (
-                  <div className={cn("flex h-full flex-col gap-1 rounded-band border-2 border-dashed border-line bg-surface p-4 opacity-70")} aria-disabled="true">
+                  <div className={cn("flex h-full flex-col gap-1 rounded-band border-2 border-dashed border-line bg-surface p-4")} aria-disabled="true">
                     <span aria-hidden className="self-end text-lg">
                       🔒
                     </span>

@@ -20,6 +20,21 @@ const HELP: Record<string, string[]> = {
     "nodes: each option goes to another node or an ending, with points (−2 to 3), the skill it uses and a debrief line.",
     "winAt is the points total needed to win. Every link must resolve, or saving is blocked.",
   ],
+  "say-it-better": [
+    "rounds[]: each has a level, a goal (clearer, kinder or persuasive), a situation and 2–4 options scored 2 (best), 1 or 0, with a why.",
+    "roundsPerRun rounds are drawn per run; winPct is the share of points needed to win.",
+    "speak[] prompts and rubric lines drive the optional speaking bonus, which is self-rated and never decides a win. Recordings never leave the device.",
+  ],
+  "bot-builder": [
+    "levels[]: two labels, items (text + label 0 or 1), trainCount items to label, testCount to test on, winAccuracy %.",
+    "Use words that clearly belong to each label, or even careful players can't train a good bot.",
+    "prompts[]: a goal and 2–4 prompt options, each with the scripted bot reply, points (2 best) and a why.",
+  ],
+  "startup-sprint": [
+    "levels[]: weeks, startCash and goalProfit in ₹, and how many interview questions to pick.",
+    "problems[]: unitCost and idealPrice (₹), marketSize (buyers a week at best), interview questions marked good or not, and the bestChannel id.",
+    "channels[]: cost per week (₹) and reach (0–1). The right channel for a problem sells 30% better.",
+  ],
 };
 
 export default async function GameEditPage({ params }: PageProps<"/hq/content/games/[slug]">) {

@@ -1,6 +1,7 @@
 "use client";
 
 import confetti from "canvas-confetti";
+import { isCalm } from "./calm";
 
 /**
  * Micro-feedback and celebrations (PRD §4.7): a short sound on every
@@ -72,7 +73,7 @@ export function feedbackOops() {
 }
 
 function reducedMotion(): boolean {
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  return isCalm() || (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
 }
 
 /** One orchestrated celebration per milestone. */

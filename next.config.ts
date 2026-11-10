@@ -11,6 +11,24 @@ const nextConfig: NextConfig = {
   logging: {
     browserToTerminal: false,
   },
+  // Browsers still ask for /favicon.ico even with app/icon.svg; serve the PNG icon there.
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/icons/icon-192.png" }];
+  },
+  // Security headers for every response (PRD §13; Lighthouse best practices).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
+        ],
+      },
+    ];
+  },
   turbopack: {
     rules: {
       "*.css": {

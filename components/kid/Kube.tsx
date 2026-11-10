@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useCalm } from "./Wellbeing";
 import type { KubeExpression, KubeStage } from "./kube-types";
 
 const VIOLET = "#7B14FF";
@@ -10,6 +11,64 @@ const VIOLET_LIGHT = "#A66BFF";
 const INK = "#121214";
 const SUN = "#FFD23F";
 const CORAL = "#FF5C7A";
+
+/** Locker body colours (top, left, right faces). Assets match locker_items.asset. */
+const KUBE_COLORS: Record<string, [string, string, string]> = {
+  violet: [VIOLET, VIOLET_DEEP, "#3A0A8C"],
+  mint: ["#1FD6A0", "#12A87C", "#0B7A57"],
+  sky: ["#38BDF8", "#1C8FD0", "#13649A"],
+  sunset: ["#FF8A5C", "#E8584F", "#B0324A"],
+  midnight: ["#3B3F6B", "#262948", "#16182E"],
+};
+
+/** Locker accessories, drawn over the body. Assets match locker_items.asset. */
+function Accessory({ asset }: { asset: string }) {
+  switch (asset) {
+    case "cap":
+      return (
+        <g>
+          <path d="M30 26 Q60 -4 90 26 Z" fill={CORAL} />
+          <path d="M84 24 Q104 22 112 30 L86 30 Z" fill={CORAL} />
+        </g>
+      );
+    case "shades":
+      return (
+        <g>
+          <rect x="34" y="68" width="22" height="14" rx="5" fill={INK} />
+          <rect x="64" y="68" width="22" height="14" rx="5" fill={INK} />
+          <path d="M56 74 H64" stroke={INK} strokeWidth="3" />
+        </g>
+      );
+    case "headphones":
+      return (
+        <g>
+          <path d="M14 60 Q14 6 60 6 Q106 6 106 60" stroke={INK} strokeWidth="6" fill="none" />
+          <rect x="4" y="54" width="16" height="26" rx="6" fill={SUN} />
+          <rect x="100" y="54" width="16" height="26" rx="6" fill={SUN} />
+        </g>
+      );
+    case "bowtie":
+      return <path d="M46 108 L58 114 L46 120 Z M74 108 L62 114 L74 120 Z M56 112 h8 v4 h-8z" fill={CORAL} />;
+    case "flower":
+      return (
+        <g>
+          {[0, 72, 144, 216, 288].map((a) => (
+            <circle key={a} cx={98 + 7 * Math.cos((a * Math.PI) / 180)} cy={28 + 7 * Math.sin((a * Math.PI) / 180)} r="5" fill="#FFB020" />
+          ))}
+          <circle cx="98" cy="28" r="4" fill="#E06A00" />
+        </g>
+      );
+    case "scarf":
+      return (
+        <g>
+          <path d="M14 100 Q60 124 106 100 L106 110 Q60 134 14 110 Z" fill={CORAL} />
+          <path d="M80 112 L86 134 L96 132 L90 108 Z" fill={CORAL} />
+        </g>
+      );
+    default:
+      return null;
+  }
+}
 
 function Face({ expression }: { expression: KubeExpression }) {
   const eye = { fill: "#fff" };
@@ -83,6 +142,8 @@ export function Kube({
   animate = true,
   className,
   label,
+  accessory,
+  color = "violet",
 }: {
   expression?: KubeExpression;
   stage?: KubeStage;
@@ -91,9 +152,15 @@ export function Kube({
   className?: string;
   /** Accessible name; defaults to a description of Kube's mood. */
   label?: string;
+  /** Locker accessory asset, e.g. "cap". */
+  accessory?: string | null;
+  /** Locker colour asset, e.g. "mint". */
+  color?: string | null;
 }) {
+  const [top, left, right] = KUBE_COLORS[color ?? "violet"] ?? KUBE_COLORS.violet;
   const reduced = useReducedMotion();
-  const bob = animate && !reduced;
+  const calm = useCalm();
+  const bob = animate && !reduced && !calm;
   const name = label ?? `Kube looks ${expression === "oops" ? "surprised" : expression}`;
 
   return (
@@ -130,7 +197,7 @@ export function Kube({
       {stage >= 2 && (
         <path d="M14 40 Q-2 96 6 128 L60 112 L114 128 Q122 96 106 40 Z" fill={CORAL} />
       )}
-      {stage >= 1 && stage < 6 && (
+      {stage >= 1 && stage < 6 && accessory !== "cap" && accessory !== "headphones" && (
         <g>
           <path d="M60 12 V-2" stroke={INK} strokeWidth="3" strokeLinecap="round" />
           <circle cx="60" cy="-4" r="5" fill={SUN} />
@@ -138,9 +205,9 @@ export function Kube({
       )}
 
       {/* Body: the cube from the logo */}
-      <polygon points="60,10 108,34 60,58 12,34" fill={VIOLET} stroke={VIOLET} strokeWidth="4" strokeLinejoin="round" />
-      <polygon points="12,34 60,58 60,118 12,94" fill={VIOLET_DEEP} stroke={VIOLET_DEEP} strokeWidth="4" strokeLinejoin="round" />
-      <polygon points="60,58 108,34 108,94 60,118" fill="#3A0A8C" stroke="#3A0A8C" strokeWidth="4" strokeLinejoin="round" />
+      <polygon points="60,10 108,34 60,58 12,34" fill={top} stroke={top} strokeWidth="4" strokeLinejoin="round" />
+      <polygon points="12,34 60,58 60,118 12,94" fill={left} stroke={left} strokeWidth="4" strokeLinejoin="round" />
+      <polygon points="60,58 108,34 108,94 60,118" fill={right} stroke={right} strokeWidth="4" strokeLinejoin="round" />
 
       <Face expression={expression} />
 
@@ -155,6 +222,7 @@ export function Kube({
       {stage >= 6 && (
         <path d="M40 18 L46 2 L54 12 L60 -2 L66 12 L74 2 L80 18 Z" fill={SUN} stroke="#E0A800" strokeWidth="2" strokeLinejoin="round" />
       )}
+      {accessory && <Accessory asset={accessory} />}
     </motion.svg>
   );
 }

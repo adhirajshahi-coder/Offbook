@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
+import { refundDecisionEmail } from "@/lib/email-templates";
 import { audit } from "@/lib/hq/audit";
 import { formatRupees } from "@/lib/pricing";
 import { isRazorpayConfigured, refundPayment } from "@/lib/razorpay";
@@ -146,11 +147,7 @@ export async function opsDecideRefund(refundId: string, decision: "approve" | "r
   if (sub.parents?.email) {
     const child = sub.students?.display_name ?? "your child";
     const amount = formatRupees(r.amount_paise ?? 0);
-    const text =
-      decision === "approve"
-        ? `Hi${sub.parents.name ? ` ${sub.parents.name.split(" ")[0]}` : ""},\n\nWe've refunded ${amount} for ${child}'s Offbook year. It usually reaches your account within 5 to 7 working days.\n\nThanks for trying Offbook.\nThe Offbook team`
-        : `Hi${sub.parents.name ? ` ${sub.parents.name.split(" ")[0]}` : ""},\n\nWe couldn't approve the refund for ${child}'s Offbook year: ${note.trim()}\n\nIf you think we've got this wrong, just reply and a person will look at it again.\nThe Offbook team`;
-    await sendEmail({ to: sub.parents.email, subject: decision === "approve" ? "Your Offbook refund" : "About your Offbook refund request", text, html: text.replace(/\n/g, "<br>") });
+    await sendEmail({ to: sub.parents.email, ...refundDecisionEmail({ parentName: sub.parents.name, childName: child, approved: decision === "approve", amount, note: note.trim() || null }) });
   }
   return done("/hq/ops/subscriptions", message);
 }

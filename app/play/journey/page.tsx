@@ -87,7 +87,7 @@ function CourseTile({ course, state, note }: { course: CourseRow; state: CourseS
       href={`/play/course/${course.slug}`}
       className={cn(
         "flex items-start justify-between gap-3 rounded-band border p-3 transition-colors",
-        locked ? "border-dashed border-line opacity-70" : "border-line bg-bg hover:border-accent",
+        locked ? "border-dashed border-line" : "border-line bg-bg hover:border-accent",
         state === "in_progress" && "border-accent",
       )}
     >

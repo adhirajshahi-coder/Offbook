@@ -2,6 +2,9 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/Logo";
 import { buttonClass } from "@/components/ui/button";
 
+// Marketing pages are static and refresh every 10 minutes (content and price edits show up within that).
+export const revalidate = 600;
+
 const NAV = [
   { href: "/how-it-works", label: "How it works" },
   { href: "/tracks", label: "Tracks" },

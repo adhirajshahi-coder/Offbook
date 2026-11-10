@@ -327,6 +327,21 @@ describe.skipIf(!enabled)("RLS", () => {
     });
   });
 
+  describe("locker and monitoring", () => {
+    it("never lets families buy items or read error logs directly", async () => {
+      const { data: item } = await admin.from("locker_items").select("id, price_coins").limit(1).single();
+      expect((await parentA.from("student_items").insert({ student_id: childOfA, item_id: item!.id, price_paid: 0 })).error).not.toBeNull();
+      expect((await parentA.from("locker_items").select("id")).data?.length).toBeGreaterThan(0);
+      expect((await parentA.from("error_events").select("id")).data ?? []).toHaveLength(0);
+      expect((await parentA.from("error_events").insert({ source: "client", message: "x" })).error).not.toBeNull();
+    });
+
+    it("stops parents forging coins (XP) or equipping items nobody bought", async () => {
+      expect((await parentA.from("students").update({ xp: 999999 }).eq("id", childOfA)).error).not.toBeNull();
+      expect((await parentA.from("students").update({ equipped: { accessory: "shades" } }).eq("id", childOfA)).error).not.toBeNull();
+    });
+  });
+
   it("keeps the staff table and HQ content closed to parents", async () => {
     const staff = await parentA.from("staff").select("*");
     expect(staff.data ?? []).toHaveLength(0);

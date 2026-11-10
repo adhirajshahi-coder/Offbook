@@ -14,6 +14,7 @@ import { CONSENT_VERSION } from "../lib/consent";
 import { seedContent } from "./seed-content";
 import { seedCrm } from "./seed-crm";
 import { BUDGET_BAZAAR, CHALLENGES, DECISION_DOJO } from "../supabase/seed-data/games";
+import { BOT_BUILDER, SAY_IT_BETTER, STARTUP_SPRINT } from "../supabase/seed-data/games-more";
 
 config({ path: ".env.local" });
 
@@ -186,6 +187,18 @@ const GAME_CONTENT = {
   "decision-dojo": {
     config: DECISION_DOJO,
     description: "Step into a tricky situation. Each choice changes the story, and the debrief shows the thinking behind it.",
+  },
+  "say-it-better": {
+    config: SAY_IT_BETTER,
+    description: "Rapid rounds: pick the clearer, kinder or more persuasive line. Then a bonus 30-second speaking challenge.",
+  },
+  "bot-builder": {
+    config: BOT_BUILDER,
+    description: "Train a tiny AI by labelling examples, test it on new ones, then write prompts that get good answers.",
+  },
+  "startup-sprint": {
+    config: STARTUP_SPRINT,
+    description: "Pick a problem, interview customers, set a price and find buyers. Your decisions decide the sales.",
   },
 };
 

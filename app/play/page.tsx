@@ -9,6 +9,7 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { getActiveStudent } from "@/lib/auth";
 import { BAND_LABEL, type Band } from "@/lib/bands";
 import { RANK_LABEL, rankIndex, type Rank } from "@/lib/gamification/xp";
+import { coinsEarned, coinsSpent, kubeLook } from "@/lib/play/locker";
 import type { Student } from "@/lib/play/session";
 import { nextAction } from "@/lib/play/state";
 import { loadStats } from "@/lib/play/stats";
@@ -73,7 +74,7 @@ async function Today({ student }: { student: Student }) {
       continueLabel = "Your capstone project";
     }
   }
-  const zone = view ? (await zoneName(view.course.track_id)) : null;
+  const [zone, look, spent] = await Promise.all([view ? zoneName(view.course.track_id) : Promise.resolve(null), kubeLook(student.id), coinsSpent(student.id)]);
 
   return (
     <WithTabs>
@@ -81,7 +82,7 @@ async function Today({ student }: { student: Student }) {
         <header className="rounded-band border border-line bg-surface p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Kube stage={rankIndex(rank) as KubeStage} size={44} animate={false} label="" />
+              <Kube stage={rankIndex(rank) as KubeStage} size={44} animate={false} label="" accessory={look.accessory} color={look.color} />
               <div>
                 <p className="font-display text-xl font-black">{student.display_name}</p>
                 <p className="text-sm text-muted">
@@ -99,6 +100,11 @@ async function Today({ student }: { student: Student }) {
             </div>
           </div>
           <XpBar xp={student.xp} className="mt-3" />
+          <p className="mt-1 text-xs text-muted">
+            <Link href="/play/me" className="underline-offset-4 hover:underline">
+              🪙 {coinsEarned(student.xp) - spent} coins · open the Locker
+            </Link>
+          </p>
           <p className="mt-2 text-sm">
             <span className="font-semibold">
               {stats.streak.daysThisWeek} of {stats.streak.goal} days
@@ -156,7 +162,7 @@ async function Today({ student }: { student: Student }) {
             </p>
           </div>
           <Link href="/play/warmup" className={buttonClass("secondary")}>
-            Start
+            Start the warm-up
           </Link>
         </section>
       </main>

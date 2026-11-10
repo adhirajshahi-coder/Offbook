@@ -3,13 +3,17 @@ import Link from "next/link";
 import { Kube } from "@/components/kid/Kube";
 import type { KubeStage } from "@/components/kid/kube-types";
 import { MuteToggle } from "@/components/kid/MuteToggle";
+import { CalmToggle } from "@/components/kid/Wellbeing";
+import { InstallButton } from "@/components/Pwa";
 import { WithTabs } from "@/components/kid/TabBar";
 import { XpBar } from "@/components/kid/XpBar";
 import { RANKS, RANK_LABEL, RANK_THRESHOLDS, rankIndex, type Rank } from "@/lib/gamification/xp";
 import { istDay, istWeekStart } from "@/lib/gamification/streaks";
 import { requireStudent } from "@/lib/play/session";
 import { loadStats } from "@/lib/play/stats";
+import { loadLocker } from "@/lib/play/locker";
 import { loadPortfolio, SOURCE_LABEL } from "@/lib/portfolio";
+import { Locker } from "./Locker";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Me" };
@@ -19,7 +23,8 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default async function MePage() {
   const student = await requireStudent();
-  const [stats, portfolio] = await Promise.all([loadStats(student.id, student.weekly_goal), loadPortfolio(student.id)]);
+  const [stats, portfolio, locker] = await Promise.all([loadStats(student.id, student.weekly_goal), loadPortfolio(student.id), loadLocker(student)]);
+  const wearing = (kind: "accessory" | "color") => locker.items.find((i) => i.kind === kind && i.equipped)?.asset ?? null;
   const rank = (student.rank as Rank) ?? "rookie";
   const ri = rankIndex(rank);
   const nextRank = RANKS[ri + 1];
@@ -31,7 +36,7 @@ export default async function MePage() {
     <WithTabs>
       <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5">
         <section className="flex flex-col items-center gap-3 rounded-band border border-line bg-surface p-6 text-center">
-          <Kube stage={ri as KubeStage} expression="happy" size={120} />
+          <Kube stage={ri as KubeStage} expression="happy" size={120} accessory={wearing("accessory")} color={wearing("color")} />
           <h1 className="text-3xl font-black">{student.display_name}</h1>
           <p className="font-semibold">{RANK_LABEL[rank]}</p>
           <XpBar xp={student.xp} className="w-full max-w-sm text-left" />
@@ -44,9 +49,20 @@ export default async function MePage() {
             <Link href="/play/league" className="rounded-full bg-surface-2 px-4 py-2 text-sm font-semibold">
               🏆 Weekly league
             </Link>
-            <MuteToggle />
           </div>
         </section>
+
+        <section className="rounded-band border border-line bg-surface p-5">
+          <h2 className="text-xl font-black">Settings</h2>
+          <p className="mt-1 text-sm text-muted">Sound plays a short note on each answer. Calm motion turns off bouncing and confetti.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <MuteToggle />
+            <CalmToggle />
+            <InstallButton />
+          </div>
+        </section>
+
+        <Locker items={locker.items} coins={locker.coins} level={student.level} stage={ri as KubeStage} />
 
         <section className="rounded-band border border-line bg-surface p-5">
           <h2 className="text-xl font-black">This week</h2>
@@ -60,6 +76,7 @@ export default async function MePage() {
                 <li key={d} className="flex flex-col items-center gap-1 text-xs">
                   <span
                     className={cn("grid h-10 w-10 place-items-center rounded-full font-bold", active ? "bg-mint text-ink" : "bg-surface-2 text-muted")}
+                    role="img"
                     aria-label={`${DAYS[i]}: ${active ? "learned" : "no activity"}`}
                   >
                     {active ? "✓" : ""}

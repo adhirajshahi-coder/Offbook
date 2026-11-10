@@ -31,7 +31,7 @@ export default async function ChallengesPage() {
                   href={`/play/challenges/${c.id}`}
                   className={cn(
                     "flex h-full flex-col gap-1 rounded-band border-2 bg-surface p-4 transition-colors hover:border-accent",
-                    c.state === "locked" ? "border-dashed border-line opacity-70" : c.state === "approved" ? "border-mint" : "border-line",
+                    c.state === "locked" ? "border-dashed border-line" : c.state === "approved" ? "border-mint" : "border-line",
                   )}
                 >
                   <p className="text-xs font-bold uppercase tracking-wide text-muted">

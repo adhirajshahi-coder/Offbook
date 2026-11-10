@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FaqList, PriceCard, Section, ZoneMap } from "@/components/marketing/blocks";
-import { TryItChallenge } from "@/components/marketing/TryItChallenge";
+import { LazyTryIt } from "@/components/marketing/LazyTryIt";
 import { buttonClass } from "@/components/ui/button";
 import { getPlan, getZones, refundWindowDays } from "@/lib/public-data";
 import { HOME_FAQ } from "./faq-data";
@@ -44,7 +44,7 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
-          <TryItChallenge />
+          <LazyTryIt />
         </div>
       </section>
 

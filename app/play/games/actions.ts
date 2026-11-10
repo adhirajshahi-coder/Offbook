@@ -1,8 +1,6 @@
 "use server";
 
-import { z } from "zod";
-import { runBudget } from "@/lib/games/budget-bazaar";
-import { runDojo } from "@/lib/games/decision-dojo";
+import { replay } from "@/lib/games/registry";
 import { capGameXp, gameSessionXp } from "@/lib/games/xp";
 import { gameXpToday, levelsOf, loadGames, openLevels, parseGameConfig } from "@/lib/play/games";
 import { awardXp, refreshTotals } from "@/lib/play/progress";
@@ -42,9 +40,6 @@ export async function startGame(slug: string, level: number): Promise<{ sessionI
   return { sessionId: data.id, seed, level };
 }
 
-const budgetInputs = z.array(z.object({ choice: z.number().int().min(0).max(10), save: z.number().int().min(0).max(1_000_000), risky: z.boolean().optional() })).max(10);
-const dojoInputs = z.array(z.number().int().min(0).max(10)).max(20);
-
 export type GameResult = {
   won: boolean;
   score: number;
@@ -69,10 +64,12 @@ export async function finishGame(slug: string, sessionId: string, inputs: unknow
   if (!session || session.game_id !== card.id) throw new Error("Game session not found");
   if (session.status !== "started") throw new Error("This run is already finished");
 
-  const result =
-    game.slug === "budget-bazaar"
-      ? runBudget(game.config, session.level, session.seed, budgetInputs.parse(inputs))
-      : runDojo(game.config, session.level, session.seed, dojoInputs.parse(inputs));
+  let result;
+  try {
+    result = replay(game.slug, game.config, session.level, session.seed, inputs);
+  } catch {
+    throw new Error("That run couldn't be checked. Try again.");
+  }
 
   const earned = gameSessionXp({ won: result.won, score: result.score, level: session.level });
   const xp = capGameXp(earned, before);

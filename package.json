@@ -14,7 +14,9 @@
     "db:push": "node scripts/db-push.mjs",
     "db:types": "supabase gen types typescript --project-id bwjepgsbvfdhjrjbqega > lib/supabase/database.types.ts",
     "seed": "tsx scripts/seed.ts",
-    "seed:reset": "tsx scripts/seed.ts --reset"
+    "seed:reset": "tsx scripts/seed.ts --reset",
+    "test:e2e": "playwright test",
+    "lighthouse": "node scripts/lighthouse.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -44,6 +46,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^24.19.2",
@@ -54,6 +57,7 @@
     "dotenv": "^18.0.9",
     "eslint": "^9",
     "eslint-config-next": "16.4.4",
+    "lighthouse": "^12.8.2",
     "supabase": "^3.0.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
