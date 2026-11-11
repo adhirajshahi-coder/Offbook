@@ -19,6 +19,8 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { celebrate, feedbackCorrect, feedbackOops } from "@/lib/client/feedback";
 import type { Response } from "@/lib/questions";
 import { cn } from "@/lib/utils";
+import { isCodeStep, type CodeStepType } from "@/lib/workspaces/schemas";
+import { CodeStep } from "@/components/workspaces/CodeStep";
 
 export type PlayerStep =
   | { id: string; type: "study_deck"; label?: string; cards: { title: string; body: string; visual: string }[] }
@@ -33,7 +35,8 @@ export type PlayerStep =
       startSec: number | null;
       endSec: number | null;
       minWatchPct: number;
-    };
+    }
+  | { id: string; type: CodeStepType; label?: string; content: unknown };
 
 type PlayerApi = {
   getQuestion: (stepId: string, group: string, exclude: string[]) => Promise<QuestionPayload>;
@@ -50,6 +53,10 @@ const STEP_NAME: Record<PlayerStep["type"], string> = {
   make: "Make",
   reflect: "Reflect",
   video: "Watch",
+  code_blocks: "Code",
+  code_python: "Code",
+  code_web: "Code",
+  sql: "Code",
 };
 
 export function LessonPlayer({
@@ -159,6 +166,7 @@ export function LessonPlayer({
       {step.type === "make" && <Make key={step.id} step={step} onDone={(text) => done({ stepId: step.id, text })} />}
       {step.type === "reflect" && <Reflect key={step.id} step={step} onDone={(text) => done({ stepId: step.id, text })} />}
       {step.type === "video" && <Watch key={step.id} step={step} onDone={(watchPct) => done({ stepId: step.id, watchPct })} />}
+      {isCodeStep(step.type) && "content" in step && <CodeStep key={step.id} type={step.type} content={step.content} onDone={(code) => done({ stepId: step.id, code })} />}
     </div>
     </ApiContext.Provider>
   );

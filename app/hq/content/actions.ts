@@ -6,6 +6,7 @@ import { requireStaff } from "@/lib/auth";
 import { audit } from "@/lib/hq/audit";
 import { canPublish, lessonChecks, type EditorStep } from "@/lib/hq/lesson-validation";
 import { createClient } from "@/lib/supabase/server";
+import { CODE_STEP_TYPES } from "@/lib/workspaces/schemas";
 
 /**
  * Content Studio writes (PRD §10). Run as the signed-in staff member, so
@@ -162,6 +163,8 @@ const stepSchema = z.discriminatedUnion("type", [
   z.object({ id: z.string().nullable(), type: z.literal("video"), content: z.object({ label: z.string().optional(), video_id: z.string().nullable(), start_sec: z.number().int().min(0).nullable().optional(), end_sec: z.number().int().min(0).nullable().optional(), min_watch_pct: z.number().int().min(0).max(100).optional() }) }),
   z.object({ id: z.string().nullable(), type: z.literal("make"), content: z.object({ prompt: z.string().max(600), rubric: z.array(z.string().max(160)).max(6) }) }),
   z.object({ id: z.string().nullable(), type: z.literal("reflect"), content: z.object({ prompt: z.string().max(200) }) }),
+  // Coding steps: content is checked against its workspace schema by the publish checklist; drafts may be incomplete.
+  ...CODE_STEP_TYPES.map((t) => z.object({ id: z.string().nullable(), type: z.literal(t), content: z.record(z.string(), z.unknown()) })),
 ]);
 
 export type SaveLessonInput = {

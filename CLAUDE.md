@@ -52,12 +52,15 @@ app/hq/crm         CRM: My day, pipelines (kanban + table + forecast), deals, co
 lib/crm/           rules.ts (stale, forecast, dedupe, round robin: pure, tested), leads.ts (captureLead), automations.ts (daily, idempotent), data.ts (timeline)
 app/hq/reports     Executive / Sales / Marketing / Operations / Learning dashboards (lib/reports.ts), CSV export (audited)
 lib/attribution.ts first-touch utm/ref cookie (proxy) → parents.signup_utm / referral_code_id at sign-up
+lib/workspaces/    coding step types (code_blocks, code_python, code_web, sql): schemas, blocks engine (server re-checks), templates
+components/workspaces  CodeStep + Blockly / Pyodide (Web Worker, 8 s stop) / sandboxed web preview / sql.js; runtimes self-hosted in public/runtimes (copied on npm install)
 lib/email-templates.ts every email (one layout, plain-text twin); previews at HQ → Settings → Email templates
 lib/monitoring.ts  first-party error log (instrumentation.ts onRequestError + /api/errors) and cron heartbeats; HQ → Settings → System
 lib/weekly.ts      weekly parent summary (Parent Zone card + Monday email)
 public/sw.js       service worker: static assets + offline page only, never pages or API (child data)
 supabase/migrations  SQL; RLS on every table
-supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games)
+supabase/seed-data   the curriculum map as data (42 courses, 9 tracks, 6 slots, 5 games), skeletons.ts (L2/L3 draft missions), content/coding-starters.ts
+scripts/seed-phase7.ts  L2/L3 skeletons, starter coding lessons, Bridge (copies Level 1 missions + questions)
 scripts/seed.ts    npm run seed / seed:reset
 tests/             rls.test.ts (live DB, `npm run test:db`), e2e/ (Playwright critical path, `npm run test:e2e` vs a prod build on :3001), stubs
 scripts/           lighthouse.mjs, load-test.mjs, test-session.ts (mint test cookies), make-icons.mjs

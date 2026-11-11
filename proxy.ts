@@ -61,6 +61,6 @@ export const config = {
   matcher: [
     // Skip every /_next/ path: static files, images and the dev HMR socket
     // (running the session refresh on the socket breaks live reload).
-    "/((?!_next/|icon.svg|brand/|icons/|sw.js|manifest.webmanifest|offline|api/health|api/razorpay|api/mux|api/cron|api/errors|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/|icon.svg|brand/|icons/|runtimes/|workspaces/|sw.js|manifest.webmanifest|offline|api/health|api/razorpay|api/mux|api/cron|api/errors|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

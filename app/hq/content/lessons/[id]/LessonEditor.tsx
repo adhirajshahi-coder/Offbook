@@ -1,5 +1,7 @@
 "use client";
 
+import { codeTemplate } from "@/lib/workspaces/templates";
+import { CodeStepEditor } from "./CodeStepEditor";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -24,6 +26,10 @@ const STEP_LABEL: Record<EditorStep["type"], string> = {
   video: "Video",
   make: "Make",
   reflect: "Reflect",
+  code_blocks: "Blocks",
+  code_python: "Python",
+  code_web: "Web page",
+  sql: "SQL",
 };
 
 let counter = 0;
@@ -42,6 +48,8 @@ function blank(type: EditorStep["type"]): Keyed {
       return { key, id: null, type, content: { prompt: "", rubric: [] } };
     case "reflect":
       return { key, id: null, type, content: { prompt: "What surprised you?" } };
+    default:
+      return { key, id: null, type, content: codeTemplate(type) as unknown as Record<string, unknown> };
   }
 }
 
@@ -442,5 +450,7 @@ function StepBody({
           <TextInput value={step.content.prompt} onChange={(e) => onChange({ prompt: e.target.value })} maxLength={200} />
         </Field>
       );
+    default:
+      return <CodeStepEditor type={step.type} content={step.content} onChange={onChange} />;
   }
 }

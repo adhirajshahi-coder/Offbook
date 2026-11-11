@@ -27,7 +27,9 @@ export async function enterProfile(prev: PinState, formData: FormData): Promise<
   if (error) return { error: "Something went wrong. Try again." };
   if (data !== "ok") return { error: MESSAGES[data as string] ?? MESSAGES.wrong };
 
-  const { data: active } = await supabase.rpc("has_active_subscription", { p_student_id: studentId });
+  const { data: active, error: planError } = await supabase.rpc("has_active_subscription", { p_student_id: studentId });
+  // A failed check (e.g. a network blip) must not tell a paying family their year hasn't started.
+  if (planError) return { error: "Something went wrong. Try again." };
   if (!active) {
     return { error: "Your Offbook year hasn't started yet. Ask a parent to start it in the Parent Zone." };
   }

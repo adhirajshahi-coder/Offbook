@@ -13,6 +13,7 @@ import { POLICIES } from "../supabase/seed-data/policies";
 import { CONSENT_VERSION } from "../lib/consent";
 import { seedContent } from "./seed-content";
 import { seedCrm } from "./seed-crm";
+import { seedBridge, seedCodingStarters, seedSkeletons } from "./seed-phase7";
 import { BUDGET_BAZAAR, CHALLENGES, DECISION_DOJO } from "../supabase/seed-data/games";
 import { BOT_BUILDER, SAY_IT_BETTER, STARTUP_SPRINT } from "../supabase/seed-data/games-more";
 
@@ -401,6 +402,9 @@ async function main() {
   if (process.argv.includes("--reset")) await reset();
   await seedCurriculum();
   await seedContent(db);
+  await seedSkeletons(db);
+  await seedCodingStarters(db);
+  await seedBridge(db);
   await seedGames();
   const demoParentId = await seedDemoAccounts();
   await seedBilling(demoParentId);
