@@ -71,6 +71,9 @@ export type ShowcaseCard = { id: string; title: string; summary: string; source_
 
 /** Public Showcase wall: parent consent AND staff approval. */
 export async function showcaseItems(limit = 30): Promise<ShowcaseCard[]> {
+  // The page is prerendered at build time; without the server key (e.g. a first
+  // deploy before env vars are set) show the empty state instead of failing the build.
+  if (!process.env.SUPABASE_SECRET_KEY) return [];
   const db = createAdminClient();
   const { data } = await db
     .from("portfolio_items")
