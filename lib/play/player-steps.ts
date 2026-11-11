@@ -2,6 +2,7 @@ import "server-only";
 import type { PlayerStep } from "@/app/play/lesson/[id]/LessonPlayer";
 import { isMuxSigningConfigured, signPlaybackToken } from "@/lib/mux";
 import { createAdminClient } from "@/lib/supabase/server";
+import { CODE_SCHEMAS, type CodeStepType } from "@/lib/workspaces/schemas";
 
 /**
  * Turn stored lesson steps into what the player needs. Practice steps carry
@@ -44,6 +45,14 @@ export async function buildPlayerSteps(lessonId: string): Promise<PlayerStep[]> 
         return { id: s.id, type: "make", prompt: String(c.prompt ?? ""), rubric: (c.rubric as string[]) ?? [] };
       case "reflect":
         return { id: s.id, type: "reflect", prompt: String(c.prompt ?? "What surprised you?") };
+      case "code_blocks":
+      case "code_python":
+      case "code_web":
+      case "sql": {
+        // Checks run in the browser, so their content (including expected SQL rows) is sent; nothing secret lives here.
+        const parsed = CODE_SCHEMAS[s.type as CodeStepType].safeParse(c);
+        return { id: s.id, type: s.type as CodeStepType, label: c.label as string | undefined, content: parsed.success ? parsed.data : null };
+      }
       default:
         return {
           id: s.id,

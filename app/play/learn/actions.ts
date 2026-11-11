@@ -8,6 +8,8 @@ import { courseIdForLesson, courseIdForMission, loadCourse, loadWorld } from "@/
 import { istDay } from "@/lib/gamification/streaks";
 import { checkAnswer, isMeaningfulText, parseWorkLink, toClient, type ClientQuestion, type QuestionRow, type Response } from "@/lib/questions";
 import { createAdminClient } from "@/lib/supabase/server";
+import { checkPuzzle, programSchema } from "@/lib/workspaces/blocks";
+import { CODE_SCHEMAS, checkCount, isCodeStep, type BlocksContent, type CodeAttempt } from "@/lib/workspaces/schemas";
 
 /**
  * Every Play write goes through here. Each action:
@@ -122,6 +124,7 @@ export async function completeStep(input: {
   stats?: { mistakes: number; bounceBacks: number; hintsUsed: number };
   text?: string;
   watchPct?: number;
+  code?: CodeAttempt;
 }): Promise<Celebration & { error?: string }> {
   const step = await stepFor(input.stepId);
   const db = createAdminClient();
@@ -187,6 +190,25 @@ export async function completeStep(input: {
     const pct = Math.max(0, Math.min(100, Math.round(input.watchPct ?? 0)));
     if (v?.status === "ready" && pct < min) return { xp: 0, error: `Watch at least ${min}% of the video first.` };
     watchPct = pct;
+    xp = firstTime ? XP.stepFirstTime : 0;
+  } else if (isCodeStep(step.type)) {
+    // Workspaces (Phase 7): every check must pass. Blocks are re-run here;
+    // Python, web and SQL checks run in the browser (D-080), and the code is
+    // kept with the step for the student, their parent and review sampling.
+    const attempt = input.code;
+    if (!attempt || typeof attempt.source !== "string") return { xp: 0, error: "Run your code first." };
+    const content = CODE_SCHEMAS[step.type].safeParse(step.content);
+    if (!content.success) return { xp: 0, error: "This step isn't set up yet." };
+    if (step.type === "code_blocks") {
+      const program = programSchema.safeParse(attempt.program);
+      if (!program.success) return { xp: 0, error: "Run your blocks first." };
+      const blocks = content.data as BlocksContent;
+      if (!checkPuzzle(blocks.grid, program.data, blocks.maxBlocks).passed) return { xp: 0, error: "Kube hasn't reached the star yet." };
+    } else {
+      const results = Array.isArray(attempt.results) ? attempt.results : [];
+      if (results.length < checkCount(step.type, content.data) || results.some((r) => !r?.passed)) return { xp: 0, error: "Make every check pass first." };
+    }
+    response = { code: attempt.source.slice(0, 20_000) };
     xp = firstTime ? XP.stepFirstTime : 0;
   } else if (step.type === "reflect") {
     const text = (input.text ?? "").trim();

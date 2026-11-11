@@ -46,6 +46,9 @@ What must be true before real families pay. ✅ done and verified in this repo �
 - ⬜ Decide the data-retention period for deleted accounts and error logs, and add a scheduled clean-up.
 
 ## 6. Content
+- ✅ Coding workspaces (Blocks, Python, Web, SQL) work in the lesson player and HQ preview; starter lessons are tested for solvability (`lib/workspaces/starters.test.ts` runs real Python and SQL).
+- ⬜ Write Level 2/3 lessons into the draft missions (87 missions) and finish Cyber Safety and Learning How to Learn so the Bridge's last two missions fill in (`npm run seed` copies them once they're published).
+- ⬜ Hosting must run `npm install` (or copy `public/runtimes`) so Pyodide and sql.js are served from your domain.
 - ⬜ Content team reviews Money Mint and Critical Thinking lessons, question variants and the five games' text in HQ (game test play records nothing).
 - ⬜ Replace the placeholder logo SVG with the real logo file (`public/brand/`), then regenerate icons: `node scripts/make-icons.mjs`.
 - ⬜ Add a real cookie-free analytics decision if marketing needs visit counts (D-024); the funnel currently starts at sign-up.
